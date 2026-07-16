@@ -135,7 +135,7 @@ function getInitialData(): DatabaseSchema {
       id: "admin-user-id-mock-uuid-key",
       organization_id: orgId,
       branch_id: branchId,
-      full_name: "Ganesan (Owner)",
+      full_name: "Spark (Owner)",
       email: "csb21090@gmail.com",
       role: "owner",
       is_active: true,
@@ -448,18 +448,97 @@ export const db = {
     return profile;
   },
 
-  updateProfile: (id: string, updates: Partial<Profile>): Profile => {
+  updateProfile: (id: string, updates: Partial<Profile> & { id?: string }): Profile => {
     const database = readDb();
     const index = database.profiles.findIndex((p) => p.id === id);
     if (index === -1) throw new Error("Profile not found");
-    const updated = { ...database.profiles[index], ...updates, updated_at: new Date().toISOString() };
+
+    let newId = id;
+    if (updates.id && updates.id !== id) {
+      newId = updates.id.trim();
+      if (!newId) throw new Error("Employee ID cannot be empty.");
+      const idExists = database.profiles.some(p => p.id === newId);
+      if (idExists) throw new Error("Employee ID is already in use by another desk.");
+    }
+
+    const updated = { ...database.profiles[index], ...updates, id: newId, updated_at: new Date().toISOString() };
     database.profiles[index] = updated;
+
+    if (newId !== id) {
+      // Cascade ID updates to income_entries
+      database.income_entries = database.income_entries.map(entry => {
+        if (entry.employee_id === id) {
+          return { ...entry, employee_id: newId };
+        }
+        return entry;
+      });
+
+      // Cascade ID updates to expense_entries
+      database.expense_entries = database.expense_entries.map(entry => {
+        if (entry.employee_id === id) {
+          return { ...entry, employee_id: newId };
+        }
+        return entry;
+      });
+
+      // Cascade ID updates to audit_logs
+      database.audit_logs = database.audit_logs.map(log => {
+        const updatedLog = { ...log };
+        if (log.user_id === id) {
+          updatedLog.user_id = newId;
+        }
+        if (log.entity_id === id) {
+          updatedLog.entity_id = newId;
+        }
+        return updatedLog;
+      });
+    }
+
     writeDb(database);
     return updated;
   },
 
-  deleteProfile: (id: string): void => {
+  deleteProfile: (id: string, reassignToId?: string): void => {
     const database = readDb();
+    
+    if (reassignToId) {
+      // Re-assign income entries
+      database.income_entries = database.income_entries.map(entry => {
+        const updated = { ...entry };
+        if (entry.employee_id === id) {
+          updated.employee_id = reassignToId;
+        }
+        if (entry.created_by === id) {
+          updated.created_by = reassignToId;
+        }
+        return updated;
+      });
+
+      // Re-assign expense entries
+      database.expense_entries = database.expense_entries.map(entry => {
+        const updated = { ...entry };
+        if (entry.employee_id === id) {
+          updated.employee_id = reassignToId;
+        }
+        if (entry.created_by === id) {
+          updated.created_by = reassignToId;
+        }
+        return updated;
+      });
+
+      // Re-assign audit logs
+      database.audit_logs = database.audit_logs.map(log => {
+        const updated = { ...log };
+        if (log.user_id === id) {
+          updated.user_id = reassignToId;
+        }
+        if (log.entity_id === id) {
+          updated.entity_id = reassignToId;
+        }
+        return updated;
+      });
+    }
+
     database.profiles = database.profiles.filter((p) => p.id !== id);
     writeDb(database);
   },

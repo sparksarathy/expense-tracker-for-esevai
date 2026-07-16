@@ -182,9 +182,18 @@ export default function App() {
         <div className="border-t border-blue-800/50 pt-5 space-y-4" id="sidebar-footer">
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
-              {user.full_name.charAt(0).toUpperCase()}
-            </div>
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.full_name}
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-full object-cover border border-blue-400 shadow-sm shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
+                {user.full_name ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "EM"}
+              </div>
+            )}
             <div className="space-y-0.5 truncate text-left">
               <h4 className="text-sm font-semibold text-white truncate leading-tight">{user.full_name}</h4>
               <span className="text-[10px] uppercase tracking-wider font-bold text-blue-300 opacity-80 block font-mono">

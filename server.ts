@@ -5,6 +5,7 @@
 
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { db } from "./src/db/localDb.ts";
 import { Profile, UserRole, PaymentMethod } from "./src/types.ts";
@@ -766,9 +767,9 @@ app.get("/api/employees", requireOwner, (req, res) => {
   res.json({ employees, approvedList });
 });
 
-// Add future approved user email
+  // Add future approved user email
 app.post("/api/employees", requireOwner, (req, res) => {
-  const { email, full_name, desk_name, phone_number, notes, role, branch_id, avatar_url, is_active } = req.body;
+  const { id, email, full_name, desk_name, phone_number, notes, role, branch_id, avatar_url, is_active } = req.body;
   const currentUser = (req as any).user;
 
   if (!email || !full_name) {
@@ -789,6 +790,17 @@ app.post("/api/employees", requireOwner, (req, res) => {
     return res.status(400).json({ error: "Email is already approved and registered." });
   }
 
+  // Validate custom ID if provided
+  let targetId = "user-id-" + Math.random().toString(36).substr(2, 9);
+  if (id && id.trim()) {
+    const customId = id.trim();
+    const existingById = db.getProfileById(customId);
+    if (existingById) {
+      return res.status(400).json({ error: "The provided Employee ID is already in use by another desk." });
+    }
+    targetId = customId;
+  }
+
   const org = db.getOrganizations()[0];
   const branch = db.getBranches()[0]; // Default to main branch for demo
 
@@ -804,7 +816,7 @@ app.post("/api/employees", requireOwner, (req, res) => {
 
   // Automatically seed matching profile so the user can immediately log in!
   const profile = db.createProfile({
-    id: "user-id-" + Math.random().toString(36).substr(2, 9),
+    id: targetId,
     organization_id: currentUser.organization_id || org.id,
     branch_id: branch_id || branch.id,
     full_name: full_name.trim(),
@@ -833,7 +845,7 @@ app.post("/api/employees", requireOwner, (req, res) => {
 });
 
 // Photo upload endpoint
-app.post("/api/employees/upload-avatar", requireAuth, (req, res) => {
+app.post("/api/employees/upload-avatar", requireAuth, async (req, res) => {
   const { fileData, fileName, fileType } = req.body;
   if (!fileData || !fileType) {
     return res.status(400).json({ error: "Missing file data or file type" });
@@ -852,15 +864,6 @@ app.post("/api/employees/upload-avatar", requireAuth, (req, res) => {
   }
 
   try {
-    const fs = require("fs");
-    const path = require("path");
-    
-    // Ensure data directory exists
-    const uploadDir = path.join(process.cwd(), "data", "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
     // Convert Base64 data to buffer
     const base64Data = fileData.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, "base64");
@@ -868,13 +871,55 @@ app.post("/api/employees/upload-avatar", requireAuth, (req, res) => {
     // Generate clean filename
     const extension = fileType.split("/")[1] || "png";
     const cleanFileName = `avatar_${Date.now()}_${Math.floor(Math.random() * 1000)}.${extension}`;
-    const filePath = path.join(uploadDir, cleanFileName);
 
-    // Save file
-    fs.writeFileSync(filePath, buffer);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const bucketName = process.env.SUPABASE_STORAGE_BUCKET || "avatars";
 
-    // Return the public URL path
-    const fileUrl = `/uploads/${cleanFileName}`;
+    let fileUrl = "";
+
+    if (supabaseUrl && supabaseKey) {
+      console.log("[Supabase Upload] Initializing Supabase client lazily...");
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      console.log(`[Supabase Upload] Uploading to bucket "${bucketName}"...`);
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .upload(cleanFileName, buffer, {
+          contentType: fileType,
+          upsert: true
+        });
+
+      if (error) {
+        console.error("[Supabase Upload Error]", error);
+        throw new Error(`Supabase Storage upload error: ${error.message}`);
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(cleanFileName);
+
+      fileUrl = publicUrlData.publicUrl;
+      console.log("[Supabase Upload] Successfully uploaded to Supabase:", fileUrl);
+    } else {
+      console.log("[Supabase Upload] No Supabase credentials. Falling back to local filesystem...");
+      
+      // Ensure data directory exists
+      const uploadDir = path.join(process.cwd(), "data", "uploads");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, cleanFileName);
+      fs.writeFileSync(filePath, buffer);
+
+      // Return the public URL path
+      fileUrl = `/uploads/${cleanFileName}`;
+      console.log("[Supabase Upload] Saved locally:", fileUrl);
+    }
+
     res.json({ success: true, url: fileUrl });
   } catch (err: any) {
     res.status(500).json({ error: "Failed to save file: " + err.message });
@@ -928,7 +973,7 @@ app.get("/api/employees/:id/deletion-check", requireOwner, (req, res) => {
 // Toggle activation, set branch, or change details of employee
 app.put("/api/employees/:id", requireAuth, (req, res) => {
   const { id } = req.params;
-  const { is_active, full_name, desk_name, phone_number, notes, role, email, avatar_url, branch_id } = req.body;
+  const { is_active, full_name, desk_name, phone_number, notes, role, email, avatar_url, branch_id, new_id } = req.body;
   const currentUser = (req as any).user;
 
   try {
@@ -958,6 +1003,14 @@ app.put("/api/employees/:id", requireAuth, (req, res) => {
 
     // These fields are OWNER ONLY
     if (currentUser.role === "owner") {
+      if (new_id !== undefined && new_id.trim() && new_id.trim() !== id) {
+        const cleanedNewId = new_id.trim();
+        const existingProfile = db.getProfileById(cleanedNewId);
+        if (existingProfile && existingProfile.id !== id) {
+          return res.status(400).json({ error: "The new Employee ID is already in use by another desk." });
+        }
+        updates.id = cleanedNewId;
+      }
       const activeOwnersCount = db.getProfiles().filter(p => p.organization_id === original.organization_id && p.role === "owner" && p.is_active).length;
 
       if (is_active !== undefined) {
@@ -1069,34 +1122,14 @@ app.delete("/api/employees/:id", requireOwner, (req, res) => {
       return res.status(400).json({ error: "Self-Deletion Protection: You cannot delete your own active owner account." });
     }
 
-    // Check if they have income entries
-    const incomeCount = db.getIncomeEntries().filter((e) => e.employee_id === id).length;
-    if (incomeCount > 0) {
-      return res.status(400).json({ error: "Cannot permanently delete: Employee has historical income records." });
-    }
-
-    // Check if they have expense entries
-    const expenseCount = db.getExpenseEntries().filter((e) => e.employee_id === id).length;
-    if (expenseCount > 0) {
-      return res.status(400).json({ error: "Cannot permanently delete: Employee has historical expense records." });
-    }
-
-    // Check if referenced by non-auth audit logs
-    const auditLogsReferenced = db.getAuditLogs().some(
-      (log) => (log.user_id === id || log.entity_id === id) && log.action !== "LOGIN" && log.action !== "LOGOUT"
-    );
-    if (auditLogsReferenced) {
-      return res.status(400).json({ error: "Cannot permanently delete: Employee is referenced by operational audit records." });
-    }
-
     // Check if final active owner
     const activeOwnersCount = db.getProfiles().filter(p => p.organization_id === profile.organization_id && p.role === "owner" && p.is_active).length;
     if (profile.role === "owner" && activeOwnersCount <= 1) {
       return res.status(400).json({ error: "Cannot permanently delete the final active Owner of this center!" });
     }
 
-    // Delete profile and approved_user record
-    db.deleteProfile(id);
+    // Delete profile (with re-assignment of historical transactions to the performing Owner) and approved_user record
+    db.deleteProfile(id, currentUser.id);
     db.deleteApprovedUser(profile.email);
 
     // Create system audit log

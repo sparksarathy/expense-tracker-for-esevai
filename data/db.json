@@ -29,7 +29,7 @@
       "id": "admin-user-id-mock-uuid-key",
       "organization_id": "88888888-8888-4888-a888-888888888888",
       "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "Ganesan (Owner)",
+      "full_name": "Spark (Owner)",
       "email": "csb21090@gmail.com",
       "role": "owner",
       "is_active": true,
@@ -1576,6 +1576,60 @@
       "new_rate": 120,
       "changed_by": "owner-test-id",
       "changed_at": "2026-07-16T12:27:24.219Z"
+    },
+    {
+      "id": "3e520ea3-5798-436e-b406-380bd4612d52",
+      "organization_id": "org-test-id",
+      "service_id": "31e3f868-1857-47f4-a3b2-86a30412b8c3",
+      "old_rate": 60,
+      "new_rate": 75,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-16T12:41:22.238Z"
+    },
+    {
+      "id": "4bc8ee6e-6b2e-4abd-9d03-4b517746b39d",
+      "organization_id": "org-test-id",
+      "service_id": "31e3f868-1857-47f4-a3b2-86a30412b8c3",
+      "old_rate": 75,
+      "new_rate": 120,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-16T12:41:22.240Z"
+    },
+    {
+      "id": "a8866e5f-4aa3-4876-8d2c-dc7851c811e1",
+      "organization_id": "org-test-id",
+      "service_id": "750fe177-6079-4102-be38-5e96323ff8f6",
+      "old_rate": 60,
+      "new_rate": 75,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-16T12:51:53.603Z"
+    },
+    {
+      "id": "a3bd8c8d-da1e-4dca-981c-9599acfde079",
+      "organization_id": "org-test-id",
+      "service_id": "750fe177-6079-4102-be38-5e96323ff8f6",
+      "old_rate": 75,
+      "new_rate": 120,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-16T12:51:53.605Z"
+    },
+    {
+      "id": "8bd4b451-9457-450e-9f32-805fea0f5f3e",
+      "organization_id": "org-test-id",
+      "service_id": "ed9113f7-4a62-4cb3-910a-4492043bf01c",
+      "old_rate": 60,
+      "new_rate": 75,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-16T12:57:50.242Z"
+    },
+    {
+      "id": "0e215c0f-7cd4-4ab5-9edb-f04fec77ebb0",
+      "organization_id": "org-test-id",
+      "service_id": "ed9113f7-4a62-4cb3-910a-4492043bf01c",
+      "old_rate": 75,
+      "new_rate": 120,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-16T12:57:50.243Z"
     }
   ]
 }

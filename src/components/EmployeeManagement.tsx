@@ -42,6 +42,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
   // Add Employee Form State
   const [showAddForm, setShowAddForm] = useState(false);
+  const [customEmployeeId, setCustomEmployeeId] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"owner" | "employee">("employee");
@@ -67,6 +68,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [renameError, setRenameError] = useState<string | null>(null);
 
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
+  const [editEmployeeId, setEditEmployeeId] = useState("");
   const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState<"owner" | "employee">("employee");
@@ -160,6 +162,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
+          id: customEmployeeId ? customEmployeeId.trim() : undefined,
           email, 
           full_name: fullName, 
           role,
@@ -179,6 +182,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       setSuccessMsg("Staff member pre-approved and added to e-Sevai Roster!");
       setEmail("");
       setFullName("");
+      setCustomEmployeeId("");
       setAddDeskName("");
       setAddPhoneNumber("");
       setAddNotes("");
@@ -325,6 +329,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
   const openEditModal = (emp: any) => {
     setEditingEmployee(emp);
+    setEditEmployeeId(emp.id);
     setEditFullName(emp.full_name);
     setEditEmail(emp.email);
     setEditRole(emp.role);
@@ -352,6 +357,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          new_id: editEmployeeId !== editingEmployee.id ? editEmployeeId : undefined,
           full_name: editFullName,
           email: editEmail,
           role: editRole,
@@ -369,6 +375,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       }
 
       setEditingEmployee(null);
+      setEditEmployeeId("");
       fetchEmployees();
       onRefresh();
     } catch (err: any) {
@@ -380,8 +387,31 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
   // Upload or update profile picture via server API
   const handlePhotoUploadApi = async (file: File, empId: string, isFromPhotoModal: boolean = false) => {
+    if (isFromPhotoModal) {
+      setPhotoError(null);
+    } else {
+      setEditError(null);
+    }
+
+    // Validate actual file type (jpeg, jpg, png, webp)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      const errMsg = "Invalid file type! Only JPG, JPEG, PNG, or WebP files are allowed.";
+      if (isFromPhotoModal) {
+        setPhotoError(errMsg);
+      } else {
+        setEditError(errMsg);
+      }
+      return;
+    }
+
     if (file.size > 2 * 1024 * 1024) {
-      alert("Photo too large! Please upload an image smaller than 2MB.");
+      const errMsg = "Photo too large! Please upload an image smaller than 2MB.";
+      if (isFromPhotoModal) {
+        setPhotoError(errMsg);
+      } else {
+        setEditError(errMsg);
+      }
       return;
     }
 
@@ -667,6 +697,18 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
           )}
 
           <form onSubmit={handleAddEmployee} className="space-y-4 text-xs font-sans">
+            <div className="space-y-1">
+              <label className="block text-slate-500 font-semibold mb-1">Custom Employee ID / Code (Optional - leave blank to auto-generate)</label>
+              <input
+                type="text"
+                placeholder="e.g. EMP102 (letters, numbers, hyphens)"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-purple-600 focus:outline-none text-sm text-slate-800 font-bold"
+                value={customEmployeeId}
+                onChange={(e) => setCustomEmployeeId(e.target.value)}
+                disabled={formLoading}
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-500 font-semibold mb-1">Email Address (Google Account)</label>
@@ -1346,6 +1388,23 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Employee ID / Card Code (Owner Overwriteable) */}
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-semibold">Employee ID / Code</label>
+                <input
+                  type="text"
+                  required
+                  disabled={user.role !== "owner"}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-purple-600 focus:outline-none text-slate-800 disabled:opacity-50 text-sm font-bold"
+                  value={editEmployeeId}
+                  onChange={(e) => setEditEmployeeId(e.target.value)}
+                  placeholder="e.g. EMP102"
+                />
+                {user.role === "owner" && (
+                  <p className="text-[9px] text-purple-600 font-semibold">Overwriting this ID automatically cascades and links all historical income, expense, and audit ledger entries to the new ID.</p>
+                )}
               </div>
 
               {/* Full Name & Google Email Address */}

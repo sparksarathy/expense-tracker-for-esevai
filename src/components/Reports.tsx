@@ -432,7 +432,7 @@ export default function Reports({ user }: ReportsProps) {
           </div>
           <div className="text-right">
             <p className="font-semibold text-slate-700">Approved Center Seal / Owner Signature:</p>
-            <p className="mt-8 border-t border-slate-200 w-48 pt-1 ml-auto">Ganesan (Center Owner / Auditor)</p>
+            <p className="mt-8 border-t border-slate-200 w-48 pt-1 ml-auto">Spark (Center Owner / Auditor)</p>
           </div>
         </div>
       </div>
