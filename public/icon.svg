@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#7e22ce" />
+    </linearGradient>
+    
+    <!-- Emblem Glow -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Inner Metallic Gradient -->
+    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Base Rounded Container with subtle shadow -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Outer Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#metalGrad)" stroke-width="12" stroke-opacity="0.4" />
+  
+  <!-- Stylized Shield Pattern representing Security & Governance -->
+  <path d="M 256,120 
+           C 320,120 370,140 370,140 
+           C 370,140 370,280 256,380 
+           C 142,280 142,140 142,140 
+           C 142,140 192,120 256,120 Z" 
+        fill="#ffffff" 
+        fill-opacity="0.1" 
+        stroke="url(#metalGrad)" 
+        stroke-width="8" 
+        stroke-linecap="round" />
+
+  <!-- Glowing Rupee & Ledger Symbol -->
+  <g filter="url(#glow)">
+    <!-- Document outline inside shield -->
+    <rect x="206" y="210" width="100" height="110" rx="10" fill="none" stroke="#ffffff" stroke-width="6" stroke-opacity="0.7" />
+    <line x1="226" y1="260" x2="286" y2="260" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-opacity="0.7" />
+    <line x1="226" y1="290" x2="266" y2="290" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-opacity="0.7" />
+    
+    <!-- Floating Rupee symbol (₹) on top-right of the document -->
+    <!-- Indian Rupee glyph rendered beautifully as vector paths -->
+    <path d="M 216,180 H 266 
+             M 216,196 H 260
+             M 238,180 C 238,180 262,185 262,210 C 262,235 238,235 238,235 
+             H 216
+             M 234,235 L 264,275" 
+          fill="none" 
+          stroke="#a855f7" 
+          stroke-width="10" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- Pure white core overlay for rupee for high visibility -->
+    <path d="M 216,180 H 266 
+             M 216,196 H 260
+             M 238,180 C 238,180 262,185 262,210 C 262,235 238,235 238,235 
+             H 216
+             M 234,235 L 264,275" 
+          fill="none" 
+          stroke="#ffffff" 
+          stroke-width="6" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+
+  <!-- Decorative Sparkles -->
+  <path d="M 120,120 L 126,120 M 120,120 L 120,126 M 120,120 L 114,120 M 120,120 L 120,114" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 390,380 L 396,380 M 390,380 L 390,386 M 390,380 L 384,380 M 390,380 L 390,374" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+</svg>

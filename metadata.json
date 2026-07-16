@@ -1,0 +1,6 @@
+{
+  "name": "e-Sevai Maiyam Income & Expense Manager",
+  "description": "A secure, mobile-first income and expense manager for Indian e-Sevai service centres with role-based permissions, financial reports, and audit logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

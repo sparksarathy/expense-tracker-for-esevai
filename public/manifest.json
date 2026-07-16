@@ -1,0 +1,23 @@
+{
+  "name": "e-Sevai Maiyam Ledger",
+  "short_name": "e-Sevai",
+  "description": "Income & Expense Ledger for e-Sevai Maiyam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
