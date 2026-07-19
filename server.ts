@@ -140,8 +140,8 @@ app.post("/api/auth/logout", (req, res) => {
     });
   }
 
-  res.cookie("auth_session_id", "", { 
-    maxAge: 0, 
+  res.cookie("auth_session_id", "", {
+    maxAge: 0,
     path: "/",
     sameSite: "none",
     secure: true,
@@ -167,7 +167,7 @@ app.get("/api/service-categories", requireAuth, (req, res) => {
 app.post("/api/service-categories", requireOwner, (req, res) => {
   const user = (req as any).user;
   const { category_name, service_name, service_code, description, default_rate, minimum_rate, maximum_rate, display_order } = req.body;
-  
+
   const nameToUse = service_name || category_name;
   if (!nameToUse) {
     return res.status(400).json({ error: "Service name is required" });
@@ -176,7 +176,7 @@ app.post("/api/service-categories", requireOwner, (req, res) => {
   // Enforce unique service names within the organization (case-insensitive)
   const existing = db.getServiceCategories().find(
     s => s.organization_id === user.organization_id &&
-         (s.service_name || s.category_name).toLowerCase() === nameToUse.trim().toLowerCase()
+      (s.service_name || s.category_name).toLowerCase() === nameToUse.trim().toLowerCase()
   );
   if (existing) {
     return res.status(400).json({ error: "A service with this name already exists in your organization." });
@@ -224,13 +224,13 @@ app.put("/api/service-categories/:id", requireOwner, (req, res) => {
   const { category_name, service_name, service_code, description, default_rate, minimum_rate, maximum_rate, is_active, display_order } = req.body;
 
   const updates: any = {};
-  
+
   const nameToUse = service_name || category_name;
   if (nameToUse !== undefined) {
     const existing = db.getServiceCategories().find(
-      s => s.id !== id && 
-           s.organization_id === user.organization_id &&
-           (s.service_name || s.category_name).toLowerCase() === nameToUse.trim().toLowerCase()
+      s => s.id !== id &&
+        s.organization_id === user.organization_id &&
+        (s.service_name || s.category_name).toLowerCase() === nameToUse.trim().toLowerCase()
     );
     if (existing) {
       return res.status(400).json({ error: "A service with this name already exists in your organization." });
@@ -312,7 +312,7 @@ app.post("/api/service-categories/bulk-status", requireOwner, (req, res) => {
 app.get("/api/service-rate-history", requireAuth, (req, res) => {
   const user = (req as any).user;
   const history = db.getServiceRateHistory().filter(h => h.organization_id === user.organization_id);
-  
+
   // Enrich with service and performer metadata
   const enriched = history.map(h => {
     const s = db.getServiceCategories().find(cat => cat.id === h.service_id);
@@ -323,7 +323,7 @@ app.get("/api/service-rate-history", requireAuth, (req, res) => {
       performer_name: p ? p.full_name : "System / Unknown"
     };
   });
-  
+
   res.json({ history: enriched });
 });
 
@@ -449,7 +449,7 @@ app.post("/api/income-entries", requireAuth, (req, res) => {
       if (!appSettings.allow_employee_rate_override) {
         return res.status(403).json({ error: "Employee rate override is disabled by application settings." });
       }
-      
+
       // If minimum and maximum rates are configured, stay in range
       if (service) {
         if (service.minimum_rate !== undefined && service.minimum_rate !== null && rate < service.minimum_rate) {
@@ -490,7 +490,7 @@ app.post("/api/income-entries", requireAuth, (req, res) => {
     transaction_date,
     notes: notes || "",
     created_by: user.id,
-    
+
     // New snapshot fields
     service_id,
     service_name_snapshot,
@@ -542,7 +542,7 @@ app.put("/api/income-entries/:id", requireAuth, (req, res) => {
   if (payment_method !== undefined) updates.payment_method = payment_method;
   if (notes !== undefined) updates.notes = notes;
   if (transaction_date !== undefined) updates.transaction_date = transaction_date;
-  
+
   if (service_rate !== undefined) {
     const rate = Number(service_rate);
     if (isNaN(rate) || rate <= 0) {
@@ -736,7 +736,7 @@ app.get("/api/branches", requireAuth, (req, res) => {
 app.get("/api/employees", requireOwner, (req, res) => {
   const profiles = db.getProfiles();
   const approvedList = db.getApprovedUsers();
-  
+
   const incomeEntries = db.getIncomeEntries();
   const expenseEntries = db.getExpenseEntries();
 
@@ -751,8 +751,8 @@ app.get("/api/employees", requireOwner, (req, res) => {
 
     // Last login lookup from audit logs
     const userAudits = db.getAuditLogs().filter((l) => l.user_id === p.id && l.action === "LOGIN");
-    const lastLogin = userAudits.length > 0 
-      ? userAudits[userAudits.length - 1].created_at 
+    const lastLogin = userAudits.length > 0
+      ? userAudits[userAudits.length - 1].created_at
       : p.created_at;
 
     return {
@@ -767,9 +767,9 @@ app.get("/api/employees", requireOwner, (req, res) => {
   res.json({ employees, approvedList });
 });
 
-  // Add future approved user email
+// Add future approved user email
 app.post("/api/employees", requireOwner, (req, res) => {
-  const { id, email, full_name, desk_name, phone_number, notes, role, branch_id, avatar_url, is_active } = req.body;
+  const { id, email, full_name, desk_name, phone_number, notes, role, branch_id, avatar_url, is_active, joining_date } = req.body;
   const currentUser = (req as any).user;
 
   if (!email || !full_name) {
@@ -827,6 +827,7 @@ app.post("/api/employees", requireOwner, (req, res) => {
     phone_number: phone_number ? phone_number.trim() : undefined,
     notes: notes ? notes.trim() : undefined,
     avatar_url: avatar_url || undefined,
+    joining_date: joining_date || new Date().toISOString().split("T")[0],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
@@ -905,7 +906,7 @@ app.post("/api/employees/upload-avatar", requireAuth, async (req, res) => {
       console.log("[Supabase Upload] Successfully uploaded to Supabase:", fileUrl);
     } else {
       console.log("[Supabase Upload] No Supabase credentials. Falling back to local filesystem...");
-      
+
       // Ensure data directory exists
       const uploadDir = path.join(process.cwd(), "data", "uploads");
       if (!fs.existsSync(uploadDir)) {
@@ -930,7 +931,7 @@ app.post("/api/employees/upload-avatar", requireAuth, async (req, res) => {
 app.get("/api/employees/:id/deletion-check", requireOwner, (req, res) => {
   const { id } = req.params;
   const currentUser = (req as any).user;
-  
+
   try {
     const profile = db.getProfileById(id);
     if (!profile) {
@@ -943,7 +944,7 @@ app.get("/api/employees/:id/deletion-check", requireOwner, (req, res) => {
 
     const incomeCount = db.getIncomeEntries().filter((e) => e.employee_id === id).length;
     const expenseCount = db.getExpenseEntries().filter((e) => e.employee_id === id).length;
-    
+
     // Check non-auth audits
     const auditLogsReferenced = db.getAuditLogs().some(
       (log) => (log.user_id === id || log.entity_id === id) && log.action !== "LOGIN" && log.action !== "LOGOUT"
@@ -973,7 +974,7 @@ app.get("/api/employees/:id/deletion-check", requireOwner, (req, res) => {
 // Toggle activation, set branch, or change details of employee
 app.put("/api/employees/:id", requireAuth, (req, res) => {
   const { id } = req.params;
-  const { is_active, full_name, desk_name, phone_number, notes, role, email, avatar_url, branch_id, new_id } = req.body;
+  const { is_active, full_name, desk_name, phone_number, notes, role, email, avatar_url, branch_id, new_id, joining_date } = req.body;
   const currentUser = (req as any).user;
 
   try {
@@ -996,6 +997,7 @@ app.put("/api/employees/:id", requireAuth, (req, res) => {
     if (desk_name !== undefined) updates.desk_name = desk_name ? desk_name.trim() : null;
     if (phone_number !== undefined) updates.phone_number = phone_number ? phone_number.trim() : null;
     if (notes !== undefined) updates.notes = notes ? notes.trim() : null;
+    if (joining_date !== undefined) updates.joining_date = joining_date;
     if (avatar_url !== undefined) {
       updates.avatar_url = avatar_url;
       updates.avatar_updated_at = new Date().toISOString();
@@ -1044,7 +1046,7 @@ app.put("/api/employees/:id", requireAuth, (req, res) => {
             return res.status(400).json({ error: "Email address is already in use by another desk." });
           }
           updates.email = lowerEmail;
-          
+
           // Also rename/update the approved user record
           try {
             const approved = db.getApprovedUserByEmail(original.email);
@@ -1219,7 +1221,7 @@ app.get("/api/reports", requireAuth, (req, res) => {
       amount,
       count
     };
-  }).filter(c => c.count > 0).sort((a,b) => b.amount - a.amount);
+  }).filter(c => c.count > 0).sort((a, b) => b.amount - a.amount);
 
   // Group by Employee
   const profiles = db.getProfiles();
@@ -1237,7 +1239,7 @@ app.get("/api/reports", requireAuth, (req, res) => {
       expenses: expenseAmt,
       net: revenue - expenseAmt,
     };
-  }).filter(e => e.count > 0 || e.expenses > 0).sort((a,b) => b.revenue - a.revenue);
+  }).filter(e => e.count > 0 || e.expenses > 0).sort((a, b) => b.revenue - a.revenue);
 
   // Group by day for charts
   const datesSet = new Set([...incomes.map(i => i.transaction_date), ...expenses.map(e => e.transaction_date)]);
@@ -1250,7 +1252,7 @@ app.get("/api/reports", requireAuth, (req, res) => {
       expense: dayExpenses,
       profit: dayIncomes - dayExpenses,
     };
-  }).sort((a,b) => a.date.localeCompare(b.date));
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
   res.json({
     summary: {
@@ -1282,7 +1284,7 @@ app.get("/api/settings", requireAuth, (req, res) => {
 
 app.put("/api/settings", requireOwner, (req, res) => {
   const { allow_employee_editing, employee_editing_limit_hours, require_expense_receipt } = req.body;
-  
+
   const updates: any = {};
   if (allow_employee_editing !== undefined) updates.allow_employee_editing = Boolean(allow_employee_editing);
   if (require_expense_receipt !== undefined) updates.require_expense_receipt = Boolean(require_expense_receipt);
@@ -1302,12 +1304,12 @@ app.post("/api/settings/reset-data", requireOwner, (req, res) => {
   try {
     const { confirmation, reauth_email } = req.body;
     const currentUser = (req as any).user;
-    
+
     // Check if the current user's email is exactly csb21090@gmail.com (the main admin email)
     if (currentUser.email.toLowerCase() !== "csb21090@gmail.com") {
       return res.status(403).json({ error: "Access Denied. Database formatting/reset is strictly restricted to the primary administrator email (csb21090@gmail.com) only." });
     }
-    
+
     // 1. Re-authentication verification
     if (reauth_email && reauth_email.toLowerCase() !== currentUser.email.toLowerCase()) {
       return res.status(403).json({ error: "Re-authentication failed. The provided email does not match your active owner account." });
@@ -1320,7 +1322,7 @@ app.post("/api/settings/reset-data", requireOwner, (req, res) => {
 
     // 3. Perform server-side transaction data reset
     const { incomeCount, expenseCount } = db.resetTransactionData(currentUser.id);
-    
+
     // 4. Create system audit log for the reset action
     db.addAuditLog({
       organization_id: currentUser.organization_id,
@@ -1332,8 +1334,8 @@ app.post("/api/settings/reset-data", requireOwner, (req, res) => {
       new_values: "Reset completed. Transaction records cleared."
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "System transaction data reset completed successfully.",
       incomeCount,
       expenseCount
@@ -1350,7 +1352,7 @@ app.post("/api/settings/reset-data", requireOwner, (req, res) => {
 app.get("/api/audit-logs", requireOwner, (req, res) => {
   const logs = db.getAuditLogs();
   logs.sort((a, b) => b.created_at.localeCompare(a.created_at));
-  
+
   // Enrich audit logs with performer full name
   const enriched = logs.map(l => {
     const p = db.getProfileById(l.user_id);
@@ -1403,4 +1405,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

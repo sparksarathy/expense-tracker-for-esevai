@@ -139,50 +139,55 @@ function getInitialData(): DatabaseSchema {
       email: "csb21090@gmail.com",
       role: "owner",
       is_active: true,
+      joining_date: "2024-10-01",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
-      id: "emp-1-mock-uuid-key",
+      id: "EMP-001",
       organization_id: orgId,
       branch_id: branchId,
       full_name: "Arun Kumar",
       email: "employee1@esevai.com",
       role: "employee",
       is_active: true,
+      joining_date: "2025-01-15",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
-      id: "emp-2-mock-uuid-key",
+      id: "EMP-002",
       organization_id: orgId,
       branch_id: branchId,
       full_name: "Priya Sharma",
       email: "employee2@esevai.com",
       role: "employee",
       is_active: true,
+      joining_date: "2025-03-20",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
-      id: "emp-3-mock-uuid-key",
+      id: "EMP-003",
       organization_id: orgId,
       branch_id: branchId,
       full_name: "Karthik Raja",
       email: "employee3@esevai.com",
       role: "employee",
       is_active: true,
+      joining_date: "2025-05-10",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
-      id: "emp-4-mock-uuid-key",
+      id: "EMP-004",
       organization_id: orgId,
       branch_id: branchId,
       full_name: "Anitha R.",
       email: "employee4@esevai.com",
       role: "employee",
       is_active: true,
+      joining_date: "2025-06-01",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -284,13 +289,13 @@ function getInitialData(): DatabaseSchema {
     const daysAgo = Math.floor(Math.random() * 30);
     const date = new Date();
     date.setDate(nowTime.getDate() - daysAgo);
-    
+
     const empIndex = Math.floor(Math.random() * profiles.length);
     const emp = profiles[empIndex];
     const customer = customerNames[Math.floor(Math.random() * customerNames.length)];
     const serviceIndex = Math.floor(Math.random() * serviceCategories.length);
     const service = serviceCategories[serviceIndex];
-    
+
     // Slight variance in standard rate
     const finalRate = service.default_rate * (1 + (Math.random() * 0.2 - 0.1));
     const roundedRate = Math.round(finalRate / 5) * 5 || 10; // Round to nearest 5
@@ -339,7 +344,7 @@ function getInitialData(): DatabaseSchema {
     const emp = profiles[empIndex];
     const expIndex = Math.floor(Math.random() * expenseCategories.length);
     const expCat = expenseCategories[expIndex];
-    
+
     const possibleDesc = expenseDescriptions[expCat.category_name] || ["Office maintenance & cleaning services"];
     const desc = possibleDesc[Math.floor(Math.random() * possibleDesc.length)];
     const amount = Math.floor(Math.random() * 400) + 100;
@@ -500,7 +505,7 @@ export const db = {
 
   deleteProfile: (id: string, reassignToId?: string): void => {
     const database = readDb();
-    
+
     if (reassignToId) {
       // Re-assign income entries
       database.income_entries = database.income_entries.map(entry => {
@@ -583,7 +588,7 @@ export const db = {
     // Enforce case-insensitive uniqueness per organization
     const existing = database.service_categories.find(
       (s) => s.organization_id === cat.organization_id &&
-             (s.service_name || s.category_name).toLowerCase() === serviceName.toLowerCase()
+        (s.service_name || s.category_name).toLowerCase() === serviceName.toLowerCase()
     );
     if (existing) {
       throw new Error(`A service with name '${serviceName}' already exists in your organization.`);
@@ -675,7 +680,7 @@ export const db = {
     const database = readDb();
     const index = database.income_entries.findIndex((e) => e.id === id);
     if (index === -1) throw new Error("Income transaction not found");
-    
+
     const oldVal = database.income_entries[index];
     const updated = { ...oldVal, ...updates, updated_at: new Date().toISOString() };
     database.income_entries[index] = updated;
@@ -739,7 +744,7 @@ export const db = {
     const database = readDb();
     const index = database.expense_entries.findIndex((e) => e.id === id);
     if (index === -1) throw new Error("Expense transaction not found");
-    
+
     const oldVal = database.expense_entries[index];
     const updated = { ...oldVal, ...updates, updated_at: new Date().toISOString() };
     database.expense_entries[index] = updated;
@@ -847,7 +852,7 @@ export const db = {
 
   resetTransactionData: (userId: string): { incomeCount: number; expenseCount: number } => {
     const database = readDb();
-    
+
     // Verify user is active owner and get their organization
     const profile = database.profiles.find(p => p.id === userId);
     if (!profile || profile.role !== "owner" || !profile.is_active) {
@@ -862,7 +867,7 @@ export const db = {
 
     database.income_entries = database.income_entries.filter(e => e.organization_id !== orgId);
     database.expense_entries = database.expense_entries.filter(e => e.organization_id !== orgId);
-    
+
     // Clear transaction-related audit logs for this organization
     database.audit_logs = database.audit_logs.filter(log => {
       const isTxRelated = log.entity_type === "income_entries" || log.entity_type === "expense_entries" || log.action === "RATE_OVERRIDE";

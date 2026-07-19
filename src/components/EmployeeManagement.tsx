@@ -5,9 +5,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Profile } from "../types";
-import { 
-  Users, UserPlus, ToggleLeft, ToggleRight, Search, Activity, 
-  ShieldCheck, Mail, Briefcase, RefreshCw, XCircle, Trash2, 
+import {
+  Users, UserPlus, ToggleLeft, ToggleRight, Search, Activity,
+  ShieldCheck, Mail, Briefcase, RefreshCw, XCircle, Trash2,
   MoreVertical, Edit2, Camera, Upload, Network, Info, Check, X,
   Phone, FileText, MapPin, Shield, User
 } from "lucide-react";
@@ -33,7 +33,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [employees, setEmployees] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -50,6 +50,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [addPhoneNumber, setAddPhoneNumber] = useState("");
   const [addNotes, setAddNotes] = useState("");
   const [addBranchId, setAddBranchId] = useState("");
+  const [joiningDate, setJoiningDate] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
   // Modal Dialog States
   const [viewingEmployee, setViewingEmployee] = useState<any | null>(null);
-  
+
   const [renamingEmployee, setRenamingEmployee] = useState<any | null>(null);
   const [renameVal, setRenameVal] = useState("");
   const [renameLoading, setRenameLoading] = useState(false);
@@ -77,6 +78,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editBranchId, setEditBranchId] = useState("");
+  const [editJoiningDate, setEditJoiningDate] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -161,15 +163,16 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       const res = await fetch("/api/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           id: customEmployeeId ? customEmployeeId.trim() : undefined,
-          email, 
-          full_name: fullName, 
+          email,
+          full_name: fullName,
           role,
           desk_name: addDeskName || undefined,
           phone_number: addPhoneNumber || undefined,
           notes: addNotes || undefined,
           branch_id: addBranchId || undefined,
+          joining_date: joiningDate || undefined,
           is_active: true
         }),
       });
@@ -186,11 +189,12 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       setAddDeskName("");
       setAddPhoneNumber("");
       setAddNotes("");
-      
+      setJoiningDate("");
+
       // Refresh Lists
       fetchEmployees();
       onRefresh();
-      
+
       setTimeout(() => {
         setShowAddForm(false);
         setSuccessMsg(null);
@@ -338,6 +342,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     setEditPhoneNumber(emp.phone_number || "");
     setEditNotes(emp.notes || "");
     setEditBranchId(emp.branch_id || "");
+    setEditJoiningDate(emp.joining_date || "");
     setEditError(null);
     setActiveDropdownId(null);
   };
@@ -365,7 +370,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
           desk_name: editDeskName ? editDeskName.trim() : null,
           phone_number: editPhoneNumber ? editPhoneNumber.trim() : null,
           notes: editNotes ? editNotes.trim() : null,
-          branch_id: editBranchId || null
+          branch_id: editBranchId || null,
+          joining_date: editJoiningDate || null
         }),
       });
 
@@ -376,6 +382,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
       setEditingEmployee(null);
       setEditEmployeeId("");
+      setEditJoiningDate("");
       fetchEmployees();
       onRefresh();
     } catch (err: any) {
@@ -609,7 +616,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         />
       );
     }
-    
+
     const initials = emp.full_name ? emp.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "EM";
     const bgColors = ["bg-purple-600", "bg-indigo-600", "bg-emerald-600", "bg-teal-600", "bg-blue-600", "bg-rose-600"];
     const colorIndex = initials.charCodeAt(0) % bgColors.length;
@@ -644,12 +651,19 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     );
   });
 
+  // Filter out owners from the card roster grid and sort them by ID (EMP-001, EMP-002, etc.)
+  const displayEmployees = filteredEmployees
+    .filter((emp) => emp.role !== "owner")
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+
   const primaryOwner = employees.find((emp) => emp.role === "owner" && emp.is_active) || employees.find((emp) => emp.role === "owner") || employees[0];
-  const childNodes = employees.filter((emp) => emp.id !== primaryOwner?.id);
+  const childNodes = employees
+    .filter((emp) => (emp as any).id !== primaryOwner?.id)
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
 
   return (
     <div className="p-4 md:p-6 space-y-6" id="employees-manager">
-      
+
       {/* Title & Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5" id="emp-header">
         <div>
@@ -674,14 +688,14 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-4 max-w-lg mx-auto" id="add-employee-form">
           <div className="flex justify-between items-center">
             <h3 className="font-display font-semibold text-sm text-slate-800">Pre-Approve New Staff Email</h3>
-            <button 
-              onClick={() => setShowAddForm(false)} 
+            <button
+              onClick={() => setShowAddForm(false)}
               className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          
+
           {errorMsg && (
             <div className="p-3 bg-rose-50 text-rose-900 border border-rose-100 rounded-xl text-xs font-medium flex items-center gap-2">
               <XCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
@@ -805,6 +819,19 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-500 font-semibold mb-1">Date of Joining</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-purple-600 focus:outline-none text-sm text-slate-800 font-medium"
+                  value={joiningDate}
+                  onChange={(e) => setJoiningDate(e.target.value)}
+                  disabled={formLoading}
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-slate-500 font-semibold mb-1">Work Description / Private Notes</label>
               <textarea
@@ -839,10 +866,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
       {/* Main Roster Columns Layout: Left Roster Grid (65%) & Right Tree Map (35%) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6" id="roster-workspace-grid">
-        
+
         {/* Left Column (65% -> xl:col-span-8): Roster Grid with 3-dot Menu Controls */}
         <div className="xl:col-span-8 space-y-4 order-2 xl:order-1" id="roster-desks-section">
-          
+
           {/* Search bar row */}
           <div className="flex gap-2 bg-white rounded-xl border border-slate-100 p-2 shadow-xs items-center">
             <Search className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
@@ -854,8 +881,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm("")} 
+              <button
+                onClick={() => setSearchTerm("")}
                 className="text-slate-400 hover:text-slate-600 text-xs px-2 py-1 hover:bg-slate-100 rounded-lg font-sans"
               >
                 Clear
@@ -863,7 +890,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
             )}
           </div>
 
-          {filteredEmployees.length === 0 ? (
+          {displayEmployees.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-500 font-sans">
               <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
               <p className="text-sm font-semibold text-slate-700">No matching employee desks found</p>
@@ -871,7 +898,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="employee-roster-grid">
-              {filteredEmployees.map((emp) => {
+              {displayEmployees.map((emp) => {
                 const dropdownOpen = activeDropdownId === emp.id;
                 const branchName = branches.find(b => b.id === emp.branch_id)?.branch_name || "Main Office";
                 const isSelected = selectedEmployeeId === emp.id;
@@ -889,27 +916,24 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                         }
                       }, 50);
                     }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs space-y-4 transition-all relative flex flex-col justify-between cursor-pointer ${
-                      isSelected 
-                        ? "ring-4 ring-purple-500 border-transparent shadow-lg scale-[1.01]" 
-                        : "border-slate-100 hover:border-slate-200 hover:shadow-sm"
-                    } ${
-                      !emp.is_active ? "opacity-65 bg-slate-50 border-slate-200" : ""
-                    }`}
+                    className={`bg-white rounded-2xl border p-5 shadow-xs space-y-4 transition-all relative flex flex-col justify-between cursor-pointer ${isSelected
+                      ? "ring-4 ring-purple-500 border-transparent shadow-lg scale-[1.01]"
+                      : "border-slate-100 hover:border-slate-200 hover:shadow-sm"
+                      } ${!emp.is_active ? "opacity-65 bg-slate-50 border-slate-200" : ""
+                      }`}
                   >
                     {/* Upper Core Panel */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-start gap-2">
-                        
+
                         {/* Avatar and Name */}
                         <div className="flex items-center gap-3">
                           {renderAvatar(emp, "w-11 h-11")}
                           <div className="space-y-0.5 min-w-0 text-left">
                             <h3 className="font-display font-bold text-slate-800 text-sm flex flex-wrap items-center gap-1.5 leading-tight">
                               <span className="truncate max-w-[120px]">{emp.full_name}</span>
-                              <span className={`text-[9px] uppercase tracking-wide font-extrabold px-2.5 py-0.5 rounded-full border ${
-                                emp.role === "owner" ? "bg-purple-50 text-purple-800 border-purple-100" : "bg-blue-50 text-blue-900 border-blue-100"
-                              }`}>
+                              <span className={`text-[9px] uppercase tracking-wide font-extrabold px-2.5 py-0.5 rounded-full border ${emp.role === "owner" ? "bg-purple-50 text-purple-800 border-purple-100" : "bg-blue-50 text-blue-900 border-blue-100"
+                                }`}>
                                 {emp.role === "owner" ? "Owner" : "Employee"}
                               </span>
                             </h3>
@@ -941,7 +965,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
                           {/* Dropdown Options Popup */}
                           {dropdownOpen && (
-                            <div 
+                            <div
                               ref={dropdownRef}
                               role="menu"
                               className="absolute right-0 mt-1.5 w-52 bg-white border border-slate-150 rounded-2xl shadow-xl py-2 z-50 text-xs font-sans animate-in fade-in slide-in-from-top-1 duration-100"
@@ -949,7 +973,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                               <div className="px-3.5 py-1.5 border-b border-slate-50 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                                 Desk Actions
                               </div>
-                              
+
                               {getAvailableActions(emp).map((act, index) => {
                                 const IconComp = act.icon;
                                 const isFocused = dropdownIndex === index;
@@ -965,19 +989,17 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                                       e.stopPropagation();
                                       triggerAction(act.id, emp);
                                     }}
-                                    className={`w-full text-left px-4 py-2.5 font-bold flex items-center gap-2 border-l-2 transition-all cursor-pointer ${
-                                      isFocused 
-                                        ? "bg-purple-50 border-[#7e22ce] text-purple-900" 
-                                        : isDestructive 
-                                        ? "text-rose-600 border-transparent hover:bg-rose-50/50 hover:border-rose-400" 
+                                    className={`w-full text-left px-4 py-2.5 font-bold flex items-center gap-2 border-l-2 transition-all cursor-pointer ${isFocused
+                                      ? "bg-purple-50 border-[#7e22ce] text-purple-900"
+                                      : isDestructive
+                                        ? "text-rose-600 border-transparent hover:bg-rose-50/50 hover:border-rose-400"
                                         : isWarning
-                                        ? "text-orange-700 border-transparent hover:bg-orange-50/50 hover:border-orange-400"
-                                        : "text-slate-700 border-transparent hover:bg-slate-50"
-                                    }`}
+                                          ? "text-orange-700 border-transparent hover:bg-orange-50/50 hover:border-orange-400"
+                                          : "text-slate-700 border-transparent hover:bg-slate-50"
+                                      }`}
                                   >
-                                    <IconComp className={`w-3.5 h-3.5 shrink-0 ${
-                                      isDestructive ? "text-rose-500" : isWarning ? "text-orange-500" : "text-slate-400"
-                                    }`} />
+                                    <IconComp className={`w-3.5 h-3.5 shrink-0 ${isDestructive ? "text-rose-500" : isWarning ? "text-orange-500" : "text-slate-400"
+                                      }`} />
                                     <span>{act.label}</span>
                                   </button>
                                 );
@@ -1022,7 +1044,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                           <Activity className="w-3 h-3 text-slate-300" />
                           <span>Status: {emp.is_active ? "Authorized" : "Revoked"}</span>
                         </span>
-                        <span className="font-mono">Added: {emp.created_at ? new Date(emp.created_at).toLocaleDateString("en-IN") : "Never"}</span>
+                        <span className="font-mono">Joined: {emp.joining_date ? new Date(emp.joining_date).toLocaleDateString("en-IN") : "Not Set"}</span>
                       </div>
                       <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
                         <span>Role: <span className="capitalize">{emp.role}</span></span>
@@ -1050,11 +1072,11 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
             </div>
 
             <div className="bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-4 space-y-6 relative overflow-hidden flex flex-col items-center">
-              
+
               {/* TOP Node: Owner */}
               {primaryOwner && (
                 <div className="flex flex-col items-center relative z-10">
-                  <button 
+                  <button
                     id={`employee-tree-node-${primaryOwner.id}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1070,11 +1092,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                       e.stopPropagation();
                       openEditModal(primaryOwner);
                     }}
-                    className={`group flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-xl p-2.5 bg-white border transition-all cursor-pointer text-center max-w-[180px] ${
-                      selectedEmployeeId === primaryOwner.id
-                        ? "ring-4 ring-purple-600 border-transparent shadow-lg scale-105"
-                        : "border-purple-200 shadow-xs hover:shadow-md hover:border-purple-300"
-                    }`}
+                    className={`group flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-xl p-2.5 bg-white border transition-all cursor-pointer text-center max-w-[180px] ${selectedEmployeeId === primaryOwner.id
+                      ? "ring-4 ring-purple-600 border-transparent shadow-lg scale-105"
+                      : "border-purple-200 shadow-xs hover:shadow-md hover:border-purple-300"
+                      }`}
                     title="Click to select/highlight. Double click to edit details."
                   >
                     <div className="relative mb-2">
@@ -1105,7 +1126,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                       return (
                         <div key={child.id} className="relative flex items-center gap-3">
                           <div className="absolute -left-4 w-4 h-0.5 bg-purple-200"></div>
-                          
+
                           <button
                             id={`employee-tree-node-${child.id}`}
                             onClick={(e) => {
@@ -1122,11 +1143,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                               e.stopPropagation();
                               openEditModal(child);
                             }}
-                            className={`flex items-center gap-2.5 bg-white border shadow-xs rounded-xl p-2 text-left transition-all w-full group cursor-pointer ${
-                              isSelected
-                                ? "ring-4 ring-purple-600 border-transparent shadow-lg scale-[1.03]"
-                                : "border-slate-100 hover:border-purple-200 hover:shadow-sm"
-                            }`}
+                            className={`flex items-center gap-2.5 bg-white border shadow-xs rounded-xl p-2 text-left transition-all w-full group cursor-pointer ${isSelected
+                              ? "ring-4 ring-purple-600 border-transparent shadow-lg scale-[1.03]"
+                              : "border-slate-100 hover:border-purple-200 hover:shadow-sm"
+                              }`}
                             title="Click to select/highlight. Double click to edit details."
                           >
                             <div className="relative">
@@ -1175,7 +1195,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
           <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-display font-bold text-slate-900 text-sm">Employee Profile Card</h3>
-              <button 
+              <button
                 onClick={() => setViewingEmployee(null)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
               >
@@ -1188,9 +1208,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 {renderAvatar(viewingEmployee, "w-16 h-16")}
                 <h4 className="font-display font-bold text-slate-900 text-base">{viewingEmployee.full_name}</h4>
                 <p className="text-slate-400 text-xs flex items-center gap-1 font-mono">{viewingEmployee.email}</p>
-                <span className={`text-[10px] uppercase tracking-wider font-extrabold px-3 py-1 rounded-full border ${
-                  viewingEmployee.role === "owner" ? "bg-purple-50 text-purple-800 border-purple-100" : "bg-blue-50 text-blue-900 border-blue-100"
-                }`}>
+                <span className={`text-[10px] uppercase tracking-wider font-extrabold px-3 py-1 rounded-full border ${viewingEmployee.role === "owner" ? "bg-purple-50 text-purple-800 border-purple-100" : "bg-blue-50 text-blue-900 border-blue-100"
+                  }`}>
                   {viewingEmployee.role === "owner" ? "Owner / Administrator" : "Employee Desk Staff"}
                 </span>
               </div>
@@ -1211,6 +1230,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 <div>
                   <span className="text-slate-400 text-[10px] block uppercase font-bold tracking-wider">Total Revenue</span>
                   <span className="font-bold text-emerald-700 text-sm">₹{Number(viewingEmployee.revenue_generated || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block uppercase font-bold tracking-wider">Date of Joining</span>
+                  <span className="font-bold text-slate-800 text-sm">{viewingEmployee.joining_date ? new Date(viewingEmployee.joining_date).toLocaleDateString("en-IN") : "Not Set"}</span>
                 </div>
               </div>
 
@@ -1237,7 +1260,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
             </div>
 
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex justify-end">
-              <button 
+              <button
                 onClick={() => setViewingEmployee(null)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow transition-all cursor-pointer"
               >
@@ -1302,14 +1325,14 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       {editingEmployee && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[100] text-slate-800 font-sans">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
-            
+
             {/* Modal Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
                 <h3 className="font-display font-bold text-slate-900 text-sm">Edit Desk Details</h3>
                 <p className="text-[10px] text-slate-400">Modify profile name, email, system role, and custom photo</p>
               </div>
-              <button 
+              <button
                 onClick={() => setEditingEmployee(null)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
               >
@@ -1329,7 +1352,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               {/* Profile Photo Upload & Selector */}
               <div className="space-y-2">
                 <label className="block text-slate-500 font-semibold">Desk Profile Photo / Avatar</label>
-                
+
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <div className="relative shrink-0">
                     {editAvatarUrl ? (
@@ -1344,18 +1367,18 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                         {editFullName ? editFullName.slice(0, 2).toUpperCase() : "??"}
                       </div>
                     )}
-                    
+
                     {/* Hidden input trigger */}
                     <label className="absolute -bottom-1 -right-1 bg-[#7e22ce] text-white p-1.5 rounded-full shadow border border-white cursor-pointer hover:bg-purple-800 transition-all">
                       <Camera className="w-3 h-3" />
-                      <input 
-                        type="file" 
-                        accept="image/png, image/jpeg, image/jpg, image/webp" 
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) handlePhotoUploadApi(file, editingEmployee.id, false);
-                        }} 
-                        className="hidden" 
+                        }}
+                        className="hidden"
                       />
                     </label>
                   </div>
@@ -1368,9 +1391,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                           key={index}
                           type="button"
                           onClick={() => handlePresetPhotoSelect(av, editingEmployee.id, false)}
-                          className={`w-7 h-7 rounded-full overflow-hidden border-2 relative transition-all cursor-pointer ${
-                            editAvatarUrl === av ? "border-purple-600 scale-110 shadow-xs" : "border-transparent opacity-80 hover:opacity-100"
-                          }`}
+                          className={`w-7 h-7 rounded-full overflow-hidden border-2 relative transition-all cursor-pointer ${editAvatarUrl === av ? "border-purple-600 scale-110 shadow-xs" : "border-transparent opacity-80 hover:opacity-100"
+                            }`}
                         >
                           <img src={av} alt="Preset" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                           {editAvatarUrl === av && (
@@ -1492,6 +1514,18 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-slate-500 font-semibold">Date of Joining</label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-purple-600 focus:outline-none text-slate-800 text-sm font-bold"
+                    value={editJoiningDate}
+                    onChange={(e) => setEditJoiningDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
               {/* Work Specialization Description */}
               <div className="space-y-1">
                 <label className="block text-slate-500 font-semibold">Work Description & Notes</label>
@@ -1560,20 +1594,20 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                     />
                   ) : (
                     <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-2xl border-4 border-indigo-200">
-                      {photoEmployee.full_name ? photoEmployee.full_name.slice(0,2).toUpperCase() : "??"}
+                      {photoEmployee.full_name ? photoEmployee.full_name.slice(0, 2).toUpperCase() : "??"}
                     </div>
                   )}
 
                   <label className="absolute bottom-0 right-0 bg-[#7e22ce] text-white p-2 rounded-full shadow border-2 border-white cursor-pointer hover:bg-purple-800 transition-all">
                     <Camera className="w-3.5 h-3.5" />
-                    <input 
-                      type="file" 
-                      accept="image/png, image/jpeg, image/jpg, image/webp" 
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) handlePhotoUploadApi(file, photoEmployee.id, true);
-                      }} 
-                      className="hidden" 
+                      }}
+                      className="hidden"
                     />
                   </label>
                 </div>
@@ -1592,9 +1626,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                       key={idx}
                       type="button"
                       onClick={() => handlePresetPhotoSelect(av, photoEmployee.id, true)}
-                      className={`aspect-square rounded-2xl overflow-hidden border-2 relative transition-all cursor-pointer ${
-                        photoVal === av ? "border-purple-600 scale-105 shadow-sm" : "border-slate-200 opacity-80 hover:opacity-100 hover:scale-[1.02]"
-                      }`}
+                      className={`aspect-square rounded-2xl overflow-hidden border-2 relative transition-all cursor-pointer ${photoVal === av ? "border-purple-600 scale-105 shadow-sm" : "border-slate-200 opacity-80 hover:opacity-100 hover:scale-[1.02]"
+                        }`}
                     >
                       <img src={av} alt="Preset" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                       {photoVal === av && (
@@ -1610,7 +1643,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-[10px] text-slate-400">
               <span>Automatically updates in hierarchy charts</span>
-              <button 
+              <button
                 onClick={() => setPhotoEmployee(null)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow transition-all cursor-pointer"
               >
@@ -1720,7 +1753,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               {/* Server Eligibility Check Feedback */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                 <span className="font-bold text-slate-700 text-[11px] block uppercase tracking-wider">Workspace Deletion Check</span>
-                
+
                 {!deletionCheckResult ? (
                   <div className="flex items-center gap-2 text-slate-400 text-[11px]">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />

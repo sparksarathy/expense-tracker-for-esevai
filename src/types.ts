@@ -43,6 +43,7 @@ export interface Profile {
   desk_name?: string;
   phone_number?: string;
   notes?: string;
+  joining_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -115,7 +116,7 @@ export interface IncomeEntry {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null; // For soft delete
-  
+
   // New service-specific fields for dynamic and override tracking
   service_id?: string;
   service_name_snapshot?: string;
