@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "organizations": {
+      "title": "Organizations",
+      "description": "Organizations managed in e-Sevai Maiyam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "incomeEntries": {
+      "title": "Income Entries",
+      "description": "Income records for e-Sevai Maiyam services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "branchId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "serviceRate": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "transactionDate": { "type": "string" }
+      },
+      "required": ["id", "customerName", "serviceRate"]
+    },
+    "expenseEntries": {
+      "title": "Expense Entries",
+      "description": "Expense records for e-Sevai Maiyam center",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "transactionDate": { "type": "string" }
+      },
+      "required": ["id", "amount", "description"]
+    }
+  }
+}
