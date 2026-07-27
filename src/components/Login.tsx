@@ -21,9 +21,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   useEffect(() => {
     // Fetch pre-approved list for the emulator quick selection
     fetch("/api/auth/approved-list")
-      .then((res) => res.json())
+      .then(async (res) => {
+        const text = await res.text();
+        return text ? JSON.parse(text) : {};
+      })
       .then((data) => {
-        if (data.approved) {
+        if (data && data.approved) {
           setQuickLoginList(data.approved);
         }
       })
@@ -43,10 +46,21 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name }),
       });
-      const data = await res.json();
+
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (parseErr) {
+        throw new Error(`Server returned invalid response (${res.status} ${res.statusText || ""}). Please try again.`);
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || "Login failed");
+        throw new Error(data.error || `Login failed (${res.status})`);
+      }
+
+      if (!data.user) {
+        throw new Error("Login failed: User data was not returned by server.");
       }
 
       onLoginSuccess(data.user);
@@ -66,10 +80,21 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: p.email, name: p.full_name }),
       });
-      const data = await res.json();
+
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (parseErr) {
+        throw new Error(`Server returned invalid response (${res.status} ${res.statusText || ""}). Please try again.`);
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || "Quick login failed");
+        throw new Error(data.error || `Quick login failed (${res.status})`);
+      }
+
+      if (!data.user) {
+        throw new Error("Quick login failed: User data was not returned by server.");
       }
 
       onLoginSuccess(data.user);

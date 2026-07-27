@@ -1630,6 +1630,24 @@
       "new_rate": 120,
       "changed_by": "owner-test-id",
       "changed_at": "2026-07-16T12:57:50.243Z"
+    },
+    {
+      "id": "55781ab1-42f0-4767-b7cf-7b7170def60b",
+      "organization_id": "org-test-id",
+      "service_id": "72b0f818-4a7a-42b7-884a-1af0b0b4636d",
+      "old_rate": 60,
+      "new_rate": 75,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-22T12:57:14.376Z"
+    },
+    {
+      "id": "dcb7ef8c-70a5-45cc-af2c-aafc9906dac5",
+      "organization_id": "org-test-id",
+      "service_id": "72b0f818-4a7a-42b7-884a-1af0b0b4636d",
+      "old_rate": 75,
+      "new_rate": 120,
+      "changed_by": "owner-test-id",
+      "changed_at": "2026-07-22T12:57:14.377Z"
     }
   ]
 }

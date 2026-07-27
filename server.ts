@@ -879,34 +879,37 @@ app.post("/api/employees/upload-avatar", requireAuth, async (req, res) => {
     let fileUrl = "";
 
     if (supabaseUrl && supabaseKey) {
-      console.log("[Supabase Upload] Initializing Supabase client lazily...");
-      const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      try {
+        console.log("[Supabase Upload] Initializing Supabase client lazily...");
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-      console.log(`[Supabase Upload] Uploading to bucket "${bucketName}"...`);
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .upload(cleanFileName, buffer, {
-          contentType: fileType,
-          upsert: true
-        });
+        console.log(`[Supabase Upload] Uploading to bucket "${bucketName}"...`);
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .upload(cleanFileName, buffer, {
+            contentType: fileType,
+            upsert: true
+          });
 
-      if (error) {
-        console.error("[Supabase Upload Error]", error);
-        throw new Error(`Supabase Storage upload error: ${error.message}`);
+        if (error) {
+          throw new Error(`Supabase Storage upload error: ${error.message}`);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from(bucketName)
+          .getPublicUrl(cleanFileName);
+
+        fileUrl = publicUrlData.publicUrl;
+        console.log("[Supabase Upload] Successfully uploaded to Supabase:", fileUrl);
+      } catch (sbError: any) {
+        console.warn("[Supabase Upload Failed] Falling back to local disk storage:", sbError.message);
+        fileUrl = "";
       }
+    }
 
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(cleanFileName);
-
-      fileUrl = publicUrlData.publicUrl;
-      console.log("[Supabase Upload] Successfully uploaded to Supabase:", fileUrl);
-    } else {
-      console.log("[Supabase Upload] No Supabase credentials. Falling back to local filesystem...");
-      
-      // Ensure data directory exists
+    if (!fileUrl) {
+      console.log("[Local Storage] Saving file to local disk...");
       const uploadDir = path.join(process.cwd(), "data", "uploads");
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
@@ -915,9 +918,8 @@ app.post("/api/employees/upload-avatar", requireAuth, async (req, res) => {
       const filePath = path.join(uploadDir, cleanFileName);
       fs.writeFileSync(filePath, buffer);
 
-      // Return the public URL path
       fileUrl = `/uploads/${cleanFileName}`;
-      console.log("[Supabase Upload] Saved locally:", fileUrl);
+      console.log("[Local Storage] Saved locally:", fileUrl);
     }
 
     res.json({ success: true, url: fileUrl });
