@@ -28,8 +28,6 @@ import {
   Menu,
   X,
   RefreshCw,
-  MapPin,
-  Clock,
   Wifi,
   WifiOff
 } from "lucide-react";
@@ -251,23 +249,6 @@ export default function App() {
               <span className="text-[10px] uppercase tracking-wider font-bold text-blue-300 opacity-80 block font-mono">
                 {user.role === "owner" ? "Owner/Admin" : "Desk Staff"}
               </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 bg-white/5 p-2.5 rounded-lg border border-blue-800/30 text-[10px] text-blue-200 font-mono" id="center-timezone">
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-blue-400" />
-                <span>Zone:</span>
-              </span>
-              <span className="font-semibold text-blue-100">IST</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-blue-400" />
-                <span>Format:</span>
-              </span>
-              <span className="font-semibold text-blue-100">DD/MM/YYYY</span>
             </div>
           </div>
 
