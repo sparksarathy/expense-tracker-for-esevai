@@ -191,13 +191,37 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
     return makeJsonResponse({ approved: profiles });
   }
 
-  // --- 2. INCOME ENDPOINTS ---
-  if (path === "/api/income" && method === "GET") {
+  // --- 2. SERVICE CATEGORIES ENDPOINTS ---
+  if ((path === "/api/service-categories" || path === "/api/services") && method === "GET") {
+    const services = getLocal<ServiceCategory[]>(STORAGE_KEYS.SERVICES, DEFAULT_SERVICES);
+    return makeJsonResponse({ categories: services, services });
+  }
+
+  if ((path === "/api/service-categories" || path === "/api/services") && method === "POST") {
+    const services = getLocal<ServiceCategory[]>(STORAGE_KEYS.SERVICES, DEFAULT_SERVICES);
+    const newService: ServiceCategory = {
+      id: "s-" + Math.random().toString(36).substr(2, 9),
+      organization_id: "org-1",
+      category_name: bodyData.service_name || bodyData.category_name || "New Service",
+      service_name: bodyData.service_name || bodyData.category_name || "New Service",
+      default_rate: Number(bodyData.default_rate || 0),
+      is_active: true,
+      display_order: services.length + 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    services.push(newService);
+    setLocal(STORAGE_KEYS.SERVICES, services);
+    return makeJsonResponse({ category: newService, service: newService });
+  }
+
+  // --- 3. INCOME ENTRIES ENDPOINTS ---
+  if ((path === "/api/income-entries" || path === "/api/income") && method === "GET") {
     const entries = getLocal<IncomeEntry[]>(STORAGE_KEYS.INCOME, []);
     return makeJsonResponse({ entries });
   }
 
-  if (path === "/api/income" && method === "POST") {
+  if ((path === "/api/income-entries" || path === "/api/income") && method === "POST") {
     const currentUser = getLocal<Profile | null>(STORAGE_KEYS.AUTH_USER, null);
     const entries = getLocal<IncomeEntry[]>(STORAGE_KEYS.INCOME, []);
     
@@ -219,24 +243,22 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
       charged_rate: Number(bodyData.charged_rate || bodyData.service_rate || 0),
       rate_overridden: Boolean(bodyData.rate_overridden),
       rate_override_reason: bodyData.rate_override_reason || "",
-      service_name_snapshot: bodyData.service_name_snapshot || "General Service"
     };
 
     entries.unshift(newEntry);
     setLocal(STORAGE_KEYS.INCOME, entries);
 
-    // Sync to Firestore
     try {
       await setDoc(doc(db, "incomeEntries", newEntry.id), newEntry);
     } catch (e) {
       console.warn("Firestore sync warning:", e);
     }
 
-    return makeJsonResponse({ entry: newEntry });
+    return makeJsonResponse({ success: true, entry: newEntry });
   }
 
-  if (path.startsWith("/api/income/") && method === "DELETE") {
-    const id = path.replace("/api/income/", "");
+  if ((path.startsWith("/api/income-entries/") || path.startsWith("/api/income/")) && method === "DELETE") {
+    const id = path.replace("/api/income-entries/", "").replace("/api/income/", "");
     let entries = getLocal<IncomeEntry[]>(STORAGE_KEYS.INCOME, []);
     entries = entries.filter((e) => e.id !== id);
     setLocal(STORAGE_KEYS.INCOME, entries);
@@ -250,13 +272,13 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
     return makeJsonResponse({ success: true });
   }
 
-  // --- 3. EXPENSE ENDPOINTS ---
-  if (path === "/api/expense" && method === "GET") {
+  // --- 4. EXPENSE ENTRIES ENDPOINTS ---
+  if ((path === "/api/expense-entries" || path === "/api/expense") && method === "GET") {
     const entries = getLocal<ExpenseEntry[]>(STORAGE_KEYS.EXPENSE, []);
     return makeJsonResponse({ entries });
   }
 
-  if (path === "/api/expense" && method === "POST") {
+  if ((path === "/api/expense-entries" || path === "/api/expense") && method === "POST") {
     const currentUser = getLocal<Profile | null>(STORAGE_KEYS.AUTH_USER, null);
     const entries = getLocal<ExpenseEntry[]>(STORAGE_KEYS.EXPENSE, []);
 
@@ -285,11 +307,11 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
       console.warn("Firestore sync warning:", e);
     }
 
-    return makeJsonResponse({ entry: newEntry });
+    return makeJsonResponse({ success: true, entry: newEntry });
   }
 
-  if (path.startsWith("/api/expense/") && method === "DELETE") {
-    const id = path.replace("/api/expense/", "");
+  if ((path.startsWith("/api/expense-entries/") || path.startsWith("/api/expense/")) && method === "DELETE") {
+    const id = path.replace("/api/expense-entries/", "").replace("/api/expense/", "");
     let entries = getLocal<ExpenseEntry[]>(STORAGE_KEYS.EXPENSE, []);
     entries = entries.filter((e) => e.id !== id);
     setLocal(STORAGE_KEYS.EXPENSE, entries);
@@ -303,44 +325,35 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
     return makeJsonResponse({ success: true });
   }
 
-  // --- 4. SERVICE CATEGORIES ENDPOINTS ---
-  if (path === "/api/services" && method === "GET") {
-    const services = getLocal<ServiceCategory[]>(STORAGE_KEYS.SERVICES, DEFAULT_SERVICES);
-    return makeJsonResponse({ services });
-  }
-
-  if (path === "/api/services" && method === "POST") {
-    const services = getLocal<ServiceCategory[]>(STORAGE_KEYS.SERVICES, DEFAULT_SERVICES);
-    const newService: ServiceCategory = {
-      id: "s-" + Math.random().toString(36).substr(2, 9),
-      organization_id: "org-1",
-      category_name: bodyData.service_name || bodyData.category_name || "New Service",
-      service_name: bodyData.service_name || bodyData.category_name || "New Service",
-      default_rate: Number(bodyData.default_rate || 0),
-      is_active: true,
-      display_order: services.length + 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    services.push(newService);
-    setLocal(STORAGE_KEYS.SERVICES, services);
-    return makeJsonResponse({ service: newService });
+  if (path === "/api/expense-categories" && method === "GET") {
+    return makeJsonResponse({
+      categories: [
+        { id: "cat-1", category_name: "Rent & Utilities", description: "Office rent, power bills, water", is_active: true },
+        { id: "cat-2", category_name: "Stationery & Paper", description: "A4 sheets, printing ink, envelopes", is_active: true },
+        { id: "cat-3", category_name: "Internet & Telecom", description: "Broadband bill, mobile recharges", is_active: true },
+        { id: "cat-4", category_name: "Staff Refreshment", description: "Tea, snacks, water bottles", is_active: true },
+        { id: "cat-5", category_name: "Miscellaneous", description: "Other expenses", is_active: true },
+      ]
+    });
   }
 
   // --- 5. EMPLOYEES ENDPOINTS ---
   if (path === "/api/employees" && method === "GET") {
     const approved = getLocal<ApprovedUser[]>(STORAGE_KEYS.EMPLOYEES, DEFAULT_APPROVED_USERS);
     const profiles = getLocal<Profile[]>(STORAGE_KEYS.PROFILES, DEFAULT_PROFILES);
-    return makeJsonResponse({ employees: approved, profiles });
+    return makeJsonResponse({ employees: profiles, profiles, approved });
   }
 
   if (path === "/api/employees" && method === "POST") {
     const approved = getLocal<ApprovedUser[]>(STORAGE_KEYS.EMPLOYEES, DEFAULT_APPROVED_USERS);
+    const profiles = getLocal<Profile[]>(STORAGE_KEYS.PROFILES, DEFAULT_PROFILES);
+    const email = (bodyData.email || "").trim().toLowerCase();
+
     const newEmp: ApprovedUser = {
       id: "emp-" + Math.random().toString(36).substr(2, 9),
       organization_id: "org-1",
       branch_id: "branch-1",
-      email: bodyData.email.trim().toLowerCase(),
+      email,
       role: bodyData.role || "employee",
       is_active: true,
       created_at: new Date().toISOString(),
@@ -348,10 +361,49 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
     };
     approved.push(newEmp);
     setLocal(STORAGE_KEYS.EMPLOYEES, approved);
-    return makeJsonResponse({ employee: newEmp });
+
+    const newProfile: Profile = {
+      id: newEmp.id,
+      organization_id: "org-1",
+      branch_id: "branch-1",
+      full_name: bodyData.full_name || email.split("@")[0],
+      email,
+      role: bodyData.role || "employee",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    profiles.push(newProfile);
+    setLocal(STORAGE_KEYS.PROFILES, profiles);
+
+    return makeJsonResponse({ employee: newProfile, approved: newEmp });
   }
 
-  // --- 6. REPORTS ENDPOINTS ---
+  // --- 6. BRANCHES & SETTINGS ENDPOINTS ---
+  if (path === "/api/branches" && method === "GET") {
+    return makeJsonResponse({
+      branches: [
+        { id: "branch-1", organization_id: "org-1", branch_name: "Main Branch - Tenkasi", city: "Tenkasi", is_active: true }
+      ]
+    });
+  }
+
+  if (path === "/api/settings" && method === "GET") {
+    return makeJsonResponse({
+      settings: {
+        allow_employee_editing: true,
+        employee_editing_limit_hours: 24,
+        allow_employee_rate_override: true,
+        require_expense_receipt: false
+      }
+    });
+  }
+
+  if (path === "/api/settings" && method === "PUT") {
+    return makeJsonResponse({ success: true });
+  }
+
+  // --- 7. REPORTS ENDPOINTS ---
   if (path.startsWith("/api/reports") && method === "GET") {
     const income = getLocal<IncomeEntry[]>(STORAGE_KEYS.INCOME, []);
     const expense = getLocal<ExpenseEntry[]>(STORAGE_KEYS.EXPENSE, []);
@@ -375,24 +427,87 @@ export async function handleClientApiRequest(urlStr: string, options: RequestIni
     const totalExpense = filteredExpense.reduce((acc, curr) => acc + (curr.amount || 0), 0);
     const netProfit = totalIncome - totalExpense;
 
+    const cashReceived = filteredIncome.filter(i => i.payment_method === "Cash in Hand").reduce((acc, c) => acc + (c.service_rate || 0), 0);
+    const gpayReceived = filteredIncome.filter(i => i.payment_method === "GPay").reduce((acc, c) => acc + (c.service_rate || 0), 0);
+
+    const services = getLocal<ServiceCategory[]>(STORAGE_KEYS.SERVICES, DEFAULT_SERVICES);
+    const revenueByCategoryMap: { [key: string]: { amount: number; count: number } } = {};
+    filteredIncome.forEach(inc => {
+      const cat = services.find(c => c.id === inc.service_category_id);
+      const resolvedName = cat ? cat.category_name : (inc.service_category_id || "General");
+      if (!revenueByCategoryMap[resolvedName]) {
+        revenueByCategoryMap[resolvedName] = { amount: 0, count: 0 };
+      }
+      revenueByCategoryMap[resolvedName].amount += (inc.service_rate || 0);
+      revenueByCategoryMap[resolvedName].count += 1;
+    });
+
+    const revenueByCategory = Object.entries(revenueByCategoryMap).map(([name, stats]) => ({
+      category_name: name,
+      amount: stats.amount,
+      count: stats.count
+    })).sort((a, b) => b.amount - a.amount);
+
+    const expensesByCategory: any[] = [];
+    const profiles = getLocal<Profile[]>(STORAGE_KEYS.PROFILES, DEFAULT_PROFILES);
+    const revenueByEmployee = profiles.map(p => {
+      const empIncomes = filteredIncome.filter(i => i.employee_id === p.id);
+      const empExpenses = filteredExpense.filter(e => e.employee_id === p.id);
+      const revenue = empIncomes.reduce((acc, curr) => acc + (curr.service_rate || 0), 0);
+      const count = empIncomes.length;
+      const expenseAmt = empExpenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+      return {
+        id: p.id,
+        full_name: p.full_name,
+        revenue,
+        count,
+        expenses: expenseAmt,
+        net: revenue - expenseAmt,
+      };
+    }).filter(e => e.count > 0 || e.expenses > 0).sort((a,b) => b.revenue - a.revenue);
+
+    const datesSet = new Set([...filteredIncome.map(i => i.transaction_date), ...filteredExpense.map(e => e.transaction_date)]);
+    const dailyBreakdown = Array.from(datesSet).map(dateStr => {
+      const dayIncomes = filteredIncome.filter(i => i.transaction_date === dateStr).reduce((acc, curr) => acc + (curr.service_rate || 0), 0);
+      const dayExpenses = filteredExpense.filter(e => e.transaction_date === dateStr).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+      return {
+        date: dateStr,
+        income: dayIncomes,
+        expense: dayExpenses,
+        profit: dayIncomes - dayExpenses,
+      };
+    }).sort((a,b) => a.date.localeCompare(b.date));
+
     return makeJsonResponse({
       summary: {
         totalIncome,
         totalExpense,
         netProfit,
+        cashReceived,
+        gpayReceived,
+        totalTransactions: filteredIncome.length + filteredExpense.length,
+        avgTransactionValue: filteredIncome.length > 0 ? Number((totalIncome / filteredIncome.length).toFixed(2)) : 0,
         incomeCount: filteredIncome.length,
         expenseCount: filteredExpense.length,
       },
-      incomeEntries: filteredIncome,
-      expenseEntries: filteredExpense,
+      revenueByCategory,
+      expensesByCategory,
+      revenueByEmployee,
+      dailyBreakdown,
+      incomes: filteredIncome,
+      expenses: filteredExpense,
     });
   }
 
-  // --- 7. TRANSACTIONS ENDPOINT ---
+  // --- 8. TRANSACTIONS ENDPOINT ---
   if (path.startsWith("/api/transactions") && method === "GET") {
     const income = getLocal<IncomeEntry[]>(STORAGE_KEYS.INCOME, []);
     const expense = getLocal<ExpenseEntry[]>(STORAGE_KEYS.EXPENSE, []);
     return makeJsonResponse({ income, expense });
+  }
+
+  if (path === "/api/audit-logs" && method === "GET") {
+    return makeJsonResponse({ logs: [] });
   }
 
   // Default fallback response
