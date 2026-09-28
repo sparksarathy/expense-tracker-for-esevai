@@ -11,7 +11,7 @@ import { db } from "./src/db/localDb.ts";
 import { Profile, UserRole, PaymentMethod } from "./src/types.ts";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Body parser
 app.use(express.json());
@@ -60,8 +60,48 @@ const requireOwner = (req: express.Request, res: express.Response, next: express
 };
 
 // =========================================================================
-// 1. AUTHENTICATION ENDPOINTS
+// 1. AUTHENTICATION & EMAIL VERIFICATION
 // =========================================================================
+
+// In-Memory Email Verification / OTP store
+interface OtpRecord {
+  code: string;
+  expiresAt: number;
+  attempts: number;
+  createdAt: number;
+}
+const otpStore = new Map<string, OtpRecord>();
+
+// Helper: Check if an email is authorized to log in
+function isEmailAuthorized(email: string): {
+  authorized: boolean;
+  role?: UserRole;
+  isInvited?: boolean;
+  name?: string;
+  source?: "profile" | "approved_user" | "invitation";
+} {
+  const normalized = email.trim().toLowerCase();
+  
+  // 1. Check existing active profile
+  const profile = db.getProfileByEmail(normalized);
+  if (profile && profile.is_active) {
+    return { authorized: true, role: profile.role, name: profile.full_name, source: "profile" };
+  }
+
+  // 2. Check approved users list
+  const approved = db.getApprovedUserByEmail(normalized);
+  if (approved && approved.is_active) {
+    return { authorized: true, role: approved.role, source: "approved_user" };
+  }
+
+  // 3. Check pending invitations
+  const invitation = db.getInvitationByEmail(normalized);
+  if (invitation && invitation.status === "pending") {
+    return { authorized: true, role: invitation.role, isInvited: true, name: invitation.full_name, source: "invitation" };
+  }
+
+  return { authorized: false };
+}
 
 // Get currently logged-in user profile
 app.get("/api/auth/me", (req, res) => {
@@ -72,47 +112,142 @@ app.get("/api/auth/me", (req, res) => {
   res.json({ user });
 });
 
-// Mock login simulation (Google OAuth / approved email lookup)
-app.post("/api/auth/login", (req, res) => {
-  const { email, name } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: "Email is required." });
+// Step 1: Request Email Verification Code (OTP)
+app.post("/api/auth/send-otp", (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "A valid email address is required." });
   }
 
-  // Look up in Approved Users list
-  const approvedUser = db.getApprovedUserByEmail(email);
-  if (!approvedUser || !approvedUser.is_active) {
-    return res.status(403).json({ error: "Access denied. Your email is not pre-approved or has been deactivated." });
-  }
+  const normalized = email.trim().toLowerCase();
+  const authCheck = isEmailAuthorized(normalized);
 
-  // Look up profile, create if not exists
-  let profile = db.getProfileByEmail(email);
-  if (!profile) {
-    profile = db.createProfile({
-      id: "user-id-" + Math.random().toString(36).substr(2, 9),
-      organization_id: approvedUser.organization_id,
-      branch_id: approvedUser.branch_id,
-      full_name: name || email.split("@")[0].replace(/[._-]/g, " "),
-      email: email.toLowerCase(),
-      role: approvedUser.role,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+  if (!authCheck.authorized) {
+    return res.status(403).json({
+      error: `Access Denied: Email "${normalized}" has not been invited or registered by the Center Admin. Please ask your administrator to send you an invitation.`,
+      notInvited: true,
     });
   }
 
-  if (!profile.is_active) {
-    return res.status(403).json({ error: "Access denied. Your account profile is deactivated." });
+  // Generate a cryptographically secure 6-digit OTP code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(normalized, {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
+    attempts: 0,
+    createdAt: Date.now(),
+  });
+
+  console.log(`\n======================================================`);
+  console.log(`[EMAIL VERIFICATION OTP] Sent to: ${normalized}`);
+  console.log(`[EMAIL VERIFICATION OTP] Code:    ${code}`);
+  console.log(`======================================================\n`);
+
+  res.json({
+    success: true,
+    email: normalized,
+    message: `Verification code sent to ${normalized}. Enter the 6-digit code to complete login.`,
+    devOtp: code, // Provided for developer demo and frictionless testing
+    isInvited: authCheck.isInvited,
+    name: authCheck.name,
+    role: authCheck.role,
+  });
+});
+
+// Step 2: Verify Email Code & Complete Login
+app.post("/api/auth/verify-otp", (req, res) => {
+  const { email, name } = req.body;
+  const code = req.body.code || req.body.otp;
+  if (!email || !code) {
+    return res.status(400).json({ error: "Email address and 6-digit verification code are required." });
   }
 
-  // Save login in Audit logs
+  const normalized = email.trim().toLowerCase();
+  const record = otpStore.get(normalized);
+
+  if (!record || record.expiresAt < Date.now()) {
+    return res.status(400).json({
+      error: "Verification code has expired or was not requested. Please request a new code.",
+      expired: true,
+    });
+  }
+
+  if (record.attempts >= 5) {
+    otpStore.delete(normalized);
+    return res.status(400).json({
+      error: "Maximum verification attempts exceeded. Please request a new code.",
+    });
+  }
+
+  if (record.code !== String(code).trim()) {
+    record.attempts++;
+    const remaining = 5 - record.attempts;
+    return res.status(400).json({
+      error: `Invalid verification code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+    });
+  }
+
+  // Code verified successfully! Invalidate used OTP
+  otpStore.delete(normalized);
+
+  // If invited, activate invitation
+  const invitation = db.getInvitationByEmail(normalized);
+  if (invitation) {
+    db.updateInvitation(invitation.id, {
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+    });
+  }
+
+  const org = db.getOrganizations()[0];
+  const branch = db.getBranches()[0];
+
+  // Look up approved user entry, create if from invitation
+  let approvedUser = db.getApprovedUserByEmail(normalized);
+  if (!approvedUser && invitation) {
+    approvedUser = db.addApprovedUser({
+      organization_id: invitation.organization_id || org.id,
+      branch_id: invitation.branch_id || branch.id,
+      email: normalized,
+      role: invitation.role,
+      is_active: true,
+      invited_by: invitation.invited_by,
+    });
+  }
+
+  // Look up profile, create or activate if needed
+  let profile = db.getProfileByEmail(normalized);
+  if (!profile) {
+    const roleToUse = approvedUser ? approvedUser.role : (invitation ? invitation.role : "employee");
+    const nameToUse = name || (invitation ? invitation.full_name : null) || normalized.split("@")[0].replace(/[._-]/g, " ");
+
+    profile = db.createProfile({
+      id: "user-id-" + Math.random().toString(36).substr(2, 9),
+      organization_id: (approvedUser && approvedUser.organization_id) || (invitation && invitation.organization_id) || org.id,
+      branch_id: (approvedUser && approvedUser.branch_id) || (invitation && invitation.branch_id) || branch.id,
+      full_name: nameToUse,
+      email: normalized,
+      role: roleToUse,
+      desk_name: invitation?.desk_name,
+      phone_number: invitation?.phone_number,
+      notes: invitation?.notes,
+      is_active: true,
+      joining_date: new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  } else if (!profile.is_active) {
+    return res.status(403).json({ error: "Access denied. Your account profile is currently deactivated." });
+  }
+
+  // Record verified login in Audit logs
   db.addAuditLog({
     organization_id: profile.organization_id,
     user_id: profile.id,
     action: "LOGIN",
     entity_type: "profiles",
     entity_id: profile.id,
-    new_values: JSON.stringify({ email: profile.email, timestamp: new Date().toISOString() })
+    new_values: JSON.stringify({ email: profile.email, verification: "EMAIL_OTP", timestamp: new Date().toISOString() })
   });
 
   // Set Auth cookie
@@ -124,7 +259,93 @@ app.post("/api/auth/login", (req, res) => {
     secure: true,
   });
 
-  res.json({ user: profile });
+  res.json({ success: true, user: profile });
+});
+
+// Step 3: Resend Verification Code
+app.post("/api/auth/resend-otp", (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  const normalized = email.trim().toLowerCase();
+  const authCheck = isEmailAuthorized(normalized);
+  if (!authCheck.authorized) {
+    return res.status(403).json({ error: "Access denied. Email is not registered or invited." });
+  }
+
+  const existing = otpStore.get(normalized);
+  if (existing && Date.now() - (existing.createdAt || 0) < 10000) {
+    return res.status(429).json({ error: "Please wait 10 seconds before requesting another code." });
+  }
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(normalized, {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    attempts: 0,
+    createdAt: Date.now(),
+  });
+
+  console.log(`[EMAIL OTP RESENT] Sent to: ${normalized} Code: ${code}`);
+
+  res.json({
+    success: true,
+    message: "New verification code sent.",
+    devOtp: code,
+  });
+});
+
+// Backward-compatible login handler (enforces OTP verification)
+app.post("/api/auth/login", (req, res) => {
+  const { email, code, name } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+
+  // If verification code is provided, delegate to verify-otp
+  if (code) {
+    const normalized = email.trim().toLowerCase();
+    const record = otpStore.get(normalized);
+
+    if (!record || record.code !== String(code).trim()) {
+      return res.status(400).json({ error: "Invalid or expired verification code." });
+    }
+
+    otpStore.delete(normalized);
+
+    let profile = db.getProfileByEmail(normalized);
+    if (!profile) {
+      const approvedUser = db.getApprovedUserByEmail(normalized);
+      if (!approvedUser) return res.status(403).json({ error: "Email not authorized." });
+      profile = db.createProfile({
+        id: "user-id-" + Math.random().toString(36).substr(2, 9),
+        organization_id: approvedUser.organization_id,
+        branch_id: approvedUser.branch_id,
+        full_name: name || normalized.split("@")[0],
+        email: normalized,
+        role: approvedUser.role,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    res.cookie("auth_session_id", profile.id, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+      sameSite: "none",
+      secure: true,
+    });
+
+    return res.json({ user: profile });
+  }
+
+  // Otherwise, email verification is strictly required!
+  return res.status(400).json({
+    error: "Email verification is required. Please request a verification code.",
+    requiresOtp: true,
+  });
 });
 
 // Clear session / Logout
@@ -389,7 +610,10 @@ app.get("/api/income-entries", requireAuth, (req, res) => {
 
   if (customer) {
     const q = (customer as string).toLowerCase();
-    entries = entries.filter((e) => e.customer_name.toLowerCase().includes(q));
+    entries = entries.filter((e) =>
+      e.customer_name.toLowerCase().includes(q) ||
+      (e.customer_number && e.customer_number.toLowerCase().includes(q))
+    );
   }
   if (employee_id && user.role === "owner") {
     entries = entries.filter((e) => e.employee_id === employee_id);
@@ -424,7 +648,7 @@ app.get("/api/income-entries", requireAuth, (req, res) => {
 
 app.post("/api/income-entries", requireAuth, (req, res) => {
   const user = (req as any).user;
-  const { customer_name, service_category_id, payment_method, service_rate, transaction_date, notes, employee_id, rate_override_reason } = req.body;
+  const { customer_name, customer_number, service_category_id, payment_method, service_rate, transaction_date, notes, employee_id, rate_override_reason } = req.body;
 
   if (!customer_name || !service_category_id || !payment_method || !service_rate || !transaction_date) {
     return res.status(400).json({ error: "Missing required fields (customer_name, service_category_id, payment_method, service_rate, transaction_date)" });
@@ -484,6 +708,7 @@ app.post("/api/income-entries", requireAuth, (req, res) => {
     branch_id: user.branch_id,
     employee_id: targetEmployeeId,
     customer_name: customer_name.trim(),
+    customer_number: customer_number ? String(customer_number).trim() : undefined,
     service_category_id: service_id,
     payment_method,
     service_rate: rate,
@@ -506,7 +731,7 @@ app.post("/api/income-entries", requireAuth, (req, res) => {
 app.put("/api/income-entries/:id", requireAuth, (req, res) => {
   const user = (req as any).user;
   const { id } = req.params;
-  const { customer_name, service_category_id, payment_method, service_rate, transaction_date, notes, employee_id } = req.body;
+  const { customer_name, customer_number, service_category_id, payment_method, service_rate, transaction_date, notes, employee_id } = req.body;
 
   let original;
   try {
@@ -538,6 +763,7 @@ app.put("/api/income-entries/:id", requireAuth, (req, res) => {
 
   const updates: any = {};
   if (customer_name !== undefined) updates.customer_name = customer_name;
+  if (customer_number !== undefined) updates.customer_number = customer_number ? String(customer_number).trim() : undefined;
   if (service_category_id !== undefined) updates.service_category_id = service_category_id;
   if (payment_method !== undefined) updates.payment_method = payment_method;
   if (notes !== undefined) updates.notes = notes;
@@ -843,6 +1069,156 @@ app.post("/api/employees", requireOwner, (req, res) => {
   });
 
   res.json({ success: true, employee: profile, approved });
+});
+
+// =========================================================================
+// EMPLOYEE INVITATION ENDPOINTS (ADMIN / OWNER)
+// =========================================================================
+
+// List all invitations (pending, accepted, expired)
+app.get("/api/employees/invitations", requireOwner, (req, res) => {
+  const invitations = db.getInvitations();
+  invitations.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  res.json({ invitations });
+});
+
+// Admin invites a new employee
+app.post("/api/employees/invite", requireOwner, (req, res) => {
+  const currentUser = (req as any).user;
+  const { email, full_name, role, desk_name, phone_number, notes, branch_id } = req.body;
+
+  if (!email || !full_name) {
+    return res.status(400).json({ error: "Email and Full Name are required to invite an employee." });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format." });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Check if an active profile already exists
+  const existingProfile = db.getProfileByEmail(normalizedEmail);
+  if (existingProfile && existingProfile.is_active) {
+    return res.status(400).json({
+      error: `An active staff account (${existingProfile.full_name}) is already registered with this email.`
+    });
+  }
+
+  // Check if a pending invite already exists
+  const existingInv = db.getInvitationByEmail(normalizedEmail);
+  if (existingInv && existingInv.status === "pending") {
+    return res.status(400).json({
+      error: `A pending invitation already exists for ${normalizedEmail}. You can copy the link or resend it.`
+    });
+  }
+
+  const org = db.getOrganizations()[0];
+  const branch = db.getBranches()[0];
+  const token = "inv_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+
+  const invitation = db.addInvitation({
+    organization_id: currentUser.organization_id || org.id,
+    branch_id: branch_id || branch.id,
+    email: normalizedEmail,
+    full_name: full_name.trim(),
+    role: role === "owner" ? "owner" : "employee",
+    desk_name: desk_name ? desk_name.trim() : undefined,
+    phone_number: phone_number ? phone_number.trim() : undefined,
+    notes: notes ? notes.trim() : undefined,
+    token,
+    status: "pending",
+    invited_by: currentUser.id,
+    invited_by_name: currentUser.full_name,
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days validity
+  });
+
+  // Ensure user is in approved_users list
+  let approved = db.getApprovedUserByEmail(normalizedEmail);
+  if (!approved) {
+    approved = db.addApprovedUser({
+      organization_id: currentUser.organization_id || org.id,
+      branch_id: branch_id || branch.id,
+      email: normalizedEmail,
+      role: invitation.role,
+      is_active: true,
+      invited_by: currentUser.id,
+    });
+  } else {
+    db.updateApprovedUser(normalizedEmail, { is_active: true, role: invitation.role });
+  }
+
+  // Pre-seed profile record so when employee verifies email, their workspace is ready!
+  if (!existingProfile) {
+    db.createProfile({
+      id: "user-id-" + Math.random().toString(36).substr(2, 9),
+      organization_id: currentUser.organization_id || org.id,
+      branch_id: branch_id || branch.id,
+      full_name: full_name.trim(),
+      email: normalizedEmail,
+      role: invitation.role,
+      desk_name: desk_name ? desk_name.trim() : undefined,
+      phone_number: phone_number ? phone_number.trim() : undefined,
+      notes: notes ? notes.trim() : undefined,
+      is_active: true,
+      joining_date: new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  // Record invitation audit log
+  db.addAuditLog({
+    organization_id: currentUser.organization_id || org.id,
+    user_id: currentUser.id,
+    action: "INVITE_EMPLOYEE",
+    entity_type: "invitations",
+    entity_id: invitation.id,
+    new_values: JSON.stringify({ email: normalizedEmail, full_name, role: invitation.role })
+  });
+
+  const origin = req.get("origin") || `${req.protocol}://${req.get("host")}`;
+  const inviteLink = `${origin}/?invite=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+
+  res.json({
+    success: true,
+    invitation,
+    inviteLink,
+    message: `Invitation issued for ${full_name} (${normalizedEmail}). Share the link or have them verify their email on login.`
+  });
+});
+
+// Resend an invitation
+app.post("/api/employees/invitations/:id/resend", requireOwner, (req, res) => {
+  const { id } = req.params;
+  const inv = db.getInvitations().find(i => i.id === id);
+  if (!inv) return res.status(404).json({ error: "Invitation record not found." });
+
+  const updated = db.updateInvitation(id, {
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    status: "pending",
+  });
+
+  const origin = req.get("origin") || `${req.protocol}://${req.get("host")}`;
+  const inviteLink = `${origin}/?invite=${updated.token}&email=${encodeURIComponent(updated.email)}`;
+
+  res.json({
+    success: true,
+    invitation: updated,
+    inviteLink,
+    message: `Invitation resent to ${updated.email}!`
+  });
+});
+
+// Revoke an invitation
+app.delete("/api/employees/invitations/:id", requireOwner, (req, res) => {
+  const { id } = req.params;
+  const inv = db.getInvitations().find(i => i.id === id);
+  if (!inv) return res.status(404).json({ error: "Invitation not found." });
+
+  db.updateInvitation(id, { status: "revoked" });
+  res.json({ success: true, message: `Invitation for ${inv.email} has been revoked.` });
 });
 
 // Photo upload endpoint

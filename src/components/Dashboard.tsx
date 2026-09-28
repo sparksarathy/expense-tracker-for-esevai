@@ -458,7 +458,16 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
                 ) : (
                   incomes.slice(0, 5).map((inc: any) => (
                     <tr key={inc.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-900">{inc.customer_name}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        <div>
+                          <span>{inc.customer_name}</span>
+                          {inc.customer_number && (
+                            <span className="block text-[11px] text-slate-400 font-mono font-normal">
+                              {inc.customer_number}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-xs">{inc.service_name || "e-Sevai filing"}</td>
                       <td className="px-4 py-3 font-semibold text-slate-800">₹{Number(inc.service_rate).toFixed(2)}</td>
                       <td className="px-4 py-3">

@@ -107,6 +107,7 @@ export interface IncomeEntry {
   branch_id: string;
   employee_id: string; // ID of the profile who earned/recorded
   customer_name: string;
+  customer_number?: string; // Customer phone/mobile number
   service_category_id: string;
   payment_method: "GPay" | "Cash in Hand";
   service_rate: number;
@@ -124,6 +125,25 @@ export interface IncomeEntry {
   charged_rate?: number;
   rate_overridden?: boolean;
   rate_override_reason?: string;
+}
+
+export interface EmployeeInvitation {
+  id: string;
+  organization_id: string;
+  branch_id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  phone_number?: string;
+  desk_name?: string;
+  notes?: string;
+  token: string;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  invited_by: string;
+  invited_by_name?: string;
+  created_at: string;
+  expires_at: string;
+  accepted_at?: string;
 }
 
 export interface ExpenseEntry {

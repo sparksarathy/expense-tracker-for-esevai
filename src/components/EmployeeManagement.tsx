@@ -9,7 +9,8 @@ import {
   Users, UserPlus, ToggleLeft, ToggleRight, Search, Activity,
   ShieldCheck, Mail, Briefcase, RefreshCw, XCircle, Trash2,
   MoreVertical, Edit2, Camera, Upload, Network, Info, Check, X,
-  Phone, FileText, MapPin, Shield, User
+  Phone, FileText, MapPin, Shield, User, Send, Copy, ExternalLink,
+  Clock, KeyRound, Sparkles
 } from "lucide-react";
 
 interface EmployeeManagementProps {
@@ -96,6 +97,22 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletionCheckResult, setDeletionCheckResult] = useState<any | null>(null);
 
+  // Employee Invitations State
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFullName, setInviteFullName] = useState("");
+  const [inviteRole, setInviteRole] = useState<"owner" | "employee">("employee");
+  const [inviteDeskName, setInviteDeskName] = useState("");
+  const [invitePhoneNumber, setInvitePhoneNumber] = useState("");
+  const [inviteBranchId, setInviteBranchId] = useState("");
+  const [inviteNotes, setInviteNotes] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccessData, setInviteSuccessData] = useState<any | null>(null);
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"roster" | "invitations">("roster");
+
   const fetchEmployees = async () => {
     try {
       const res = await fetch("/api/employees");
@@ -118,6 +135,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         setBranches(data.branches || []);
         if (data.branches && data.branches.length > 0) {
           setAddBranchId(data.branches[0].id);
+          setInviteBranchId(data.branches[0].id);
         }
       }
     } catch (err) {
@@ -125,9 +143,104 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     }
   };
 
+  const fetchInvitations = async () => {
+    try {
+      const res = await fetch("/api/employees/invitations");
+      if (res.ok) {
+        const data = await res.json();
+        setInvitations(data.invitations || []);
+      }
+    } catch (err) {
+      console.error("Failed to load invitations:", err);
+    }
+  };
+
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail || !inviteFullName) {
+      setInviteError("Email and Full Name are mandatory.");
+      return;
+    }
+
+    setInviteLoading(true);
+    setInviteError(null);
+
+    try {
+      const res = await fetch("/api/employees/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: inviteEmail.trim().toLowerCase(),
+          full_name: inviteFullName.trim(),
+          role: inviteRole,
+          desk_name: inviteDeskName.trim() || undefined,
+          phone_number: invitePhoneNumber.trim() || undefined,
+          notes: inviteNotes.trim() || undefined,
+          branch_id: inviteBranchId || (branches[0]?.id) || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to issue invitation.");
+      }
+
+      setInviteSuccessData(data);
+      fetchInvitations();
+      fetchEmployees();
+      onRefresh();
+
+      setInviteEmail("");
+      setInviteFullName("");
+      setInviteDeskName("");
+      setInvitePhoneNumber("");
+      setInviteNotes("");
+    } catch (err: any) {
+      setInviteError(err.message);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleResendInvite = async (invId: string) => {
+    try {
+      const res = await fetch(`/api/employees/invitations/${invId}/resend`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        fetchInvitations();
+        alert("Invitation refreshed and extended by 7 days!");
+      } else {
+        alert(data.error || "Failed to resend invite.");
+      }
+    } catch (e) {
+      alert("Error resending invitation.");
+    }
+  };
+
+  const handleRevokeInvite = async (invId: string) => {
+    if (!confirm("Are you sure you want to revoke this invitation?")) return;
+    try {
+      const res = await fetch(`/api/employees/invitations/${invId}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchInvitations();
+        fetchEmployees();
+        onRefresh();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleCopyLink = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedInviteId(id);
+    setTimeout(() => setCopiedInviteId(null), 2500);
+  };
+
   useEffect(() => {
     fetchEmployees();
     fetchBranches();
+    fetchInvitations();
   }, []);
 
   // Handle clicking outside to close the 3-dot dropdown menu
@@ -671,15 +784,52 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
             <Users className="w-5 h-5 text-[#7e22ce]" />
             <span>Staff Management Center</span>
           </h1>
-          <p className="text-slate-500 text-xs mt-1">Configure workspace desks, customize avatar profiles, and audit structure mapping</p>
+          <p className="text-slate-500 text-xs mt-1">Configure workspace desks, invite staff members with email verification, and audit access permissions</p>
         </div>
 
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => { setShowInviteModal(true); setInviteSuccessData(null); setInviteError(null); }}
+            className="px-4 py-2 bg-gradient-to-r from-[#7e22ce] to-indigo-600 hover:from-purple-800 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer font-sans"
+          >
+            <Send className="w-4 h-4" />
+            <span>Invite Employee</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer font-sans"
+          >
+            <UserPlus className="w-4 h-4 text-slate-500" />
+            <span>Quick Register</span>
+          </button>
+        </div>
+      </div>
+
+      {/* View Switcher: Active Staff Roster vs Invitations */}
+      <div className="flex items-center gap-2">
         <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-[#7e22ce] hover:bg-purple-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm hover:shadow-md transition-all self-start cursor-pointer font-sans"
+          onClick={() => setActiveTab("roster")}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "roster"
+              ? "bg-[#1e3a8a] text-white shadow-sm"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
         >
-          <UserPlus className="w-4 h-4" />
-          <span>Authorize Employee Login</span>
+          <Users className="w-3.5 h-3.5" />
+          <span>Active Staff Roster ({displayEmployees.length + (primaryOwner ? 1 : 0)})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("invitations")}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "invitations"
+              ? "bg-[#1e3a8a] text-white shadow-sm"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <Mail className="w-3.5 h-3.5" />
+          <span>Invitations ({invitations.filter(i => i.status === "pending").length} Pending)</span>
         </button>
       </div>
 
@@ -865,6 +1015,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       )}
 
       {/* Main Roster Columns Layout: Left Roster Grid (65%) & Right Tree Map (35%) */}
+      {activeTab === "roster" && (
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6" id="roster-workspace-grid">
 
         {/* Left Column (65% -> xl:col-span-8): Roster Grid with 3-dot Menu Controls */}
@@ -1188,6 +1339,234 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
           </div>
         </div>
       </div>
+      )}
+
+      {/* 2. INVITATIONS MANAGEMENT TAB */}
+      {activeTab === "invitations" && (
+        <div className="space-y-6" id="invitations-management-section">
+          {/* Top Banner & Action */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center font-bold">
+                  <Send className="w-4 h-4 text-blue-900" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-slate-900 text-base">
+                    Employee Email Invitations
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Invite new staff with pre-configured roles, desks, and branches. When they open their invite link or login with their email, they verify via OTP to complete onboarding.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setInviteSuccessData(null);
+                setInviteError(null);
+                setShowInviteModal(true);
+              }}
+              className="px-4 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <Send className="w-4 h-4" />
+              <span>Send New Invitation</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Acceptance</p>
+                <p className="text-xl font-display font-extrabold text-slate-900">
+                  {invitations.filter((i) => i.status === "pending").length}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Check className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Accepted & Active</p>
+                <p className="text-xl font-display font-extrabold text-slate-900">
+                  {invitations.filter((i) => i.status === "accepted").length}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Invitations Sent</p>
+                <p className="text-xl font-display font-extrabold text-slate-900">
+                  {invitations.length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Invitations Table / Cards */}
+          {invitations.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center max-w-lg mx-auto shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-900 flex items-center justify-center mx-auto mb-4">
+                <Send className="w-7 h-7" />
+              </div>
+              <h4 className="font-display font-bold text-slate-900 text-base mb-1">
+                No Invitations Issued Yet
+              </h4>
+              <p className="text-xs text-slate-500 mb-6">
+                You can invite new employees to your e-Sevai center by sending them an invitation link. They will be prompted for secure email OTP verification upon their first sign in.
+              </p>
+              <button
+                onClick={() => {
+                  setInviteSuccessData(null);
+                  setInviteError(null);
+                  setShowInviteModal(true);
+                }}
+                className="px-5 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 mx-auto cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>Invite First Employee</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {invitations.map((inv) => {
+                const inviteUrl = `${window.location.origin}?invite=${inv.token}&email=${encodeURIComponent(inv.email)}`;
+                const isCopied = copiedInviteId === inv.id;
+                const isExpired = new Date(inv.expires_at) < new Date();
+                const branchObj = branches.find((b) => b.id === inv.branch_id);
+
+                return (
+                  <div
+                    key={inv.id}
+                    className="bg-white rounded-xl border border-slate-100 p-5 shadow-xs hover:border-slate-200 transition-all flex flex-col lg:flex-row justify-between lg:items-center gap-4"
+                  >
+                    {/* Left: Invitee Info */}
+                    <div className="space-y-1.5 min-w-[280px]">
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-display font-bold text-slate-900 text-sm">
+                          {inv.full_name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                            inv.status === "accepted"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : isExpired
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {inv.status === "accepted" ? "Accepted" : isExpired ? "Expired" : "Pending OTP"}
+                        </span>
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                          {inv.role === "owner" ? "Owner / Admin" : "Employee"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Mail className="w-3.5 h-3.5 text-slate-400" />
+                          {inv.email}
+                        </span>
+                        {inv.phone_number && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            {inv.phone_number}
+                          </span>
+                        )}
+                        {inv.desk_name && (
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                            {inv.desk_name}
+                          </span>
+                        )}
+                        {branchObj && (
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            {branchObj.name}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[11px] text-slate-400 flex items-center gap-2 pt-0.5">
+                        <span>Invited: {new Date(inv.created_at).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>Expires: {new Date(inv.expires_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Right: Link & Actions */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 shrink-0">
+                      {inv.status === "pending" && (
+                        <button
+                          onClick={() => handleCopyLink(inviteUrl, inv.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                            isCopied
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                          }`}
+                          title="Copy unique onboarding link"
+                        >
+                          {isCopied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="font-bold">Link Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Copy Onboarding Link</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {inv.status === "pending" && (
+                        <button
+                          onClick={() => handleResendInvite(inv.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all flex items-center gap-1 cursor-pointer"
+                          title="Resend invitation & extend expiry by 7 days"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Resend / Extend</span>
+                        </button>
+                      )}
+
+                      {inv.status === "pending" && (
+                        <button
+                          onClick={() => handleRevokeInvite(inv.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all flex items-center gap-1 cursor-pointer"
+                          title="Revoke this invitation"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Revoke</span>
+                        </button>
+                      )}
+
+                      {inv.status === "accepted" && (
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Verified & Onboarded</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1. VIEW DETAILS MODAL */}
       {viewingEmployee && (
@@ -1828,6 +2207,291 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 >
                   {deleteLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <span>Permanently Erase Profile</span>}
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. INVITE EMPLOYEE MODAL */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[100] text-slate-800 font-sans animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-900 flex items-center justify-center font-bold">
+                  <Send className="w-4 h-4 text-blue-900" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-slate-900 text-sm">
+                    {inviteSuccessData ? "Invitation Generated!" : "Invite Employee to Center"}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {inviteSuccessData ? "Share link or have employee verify via OTP" : "Configure desk, role, and send an email invitation"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteSuccessData(null);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              {inviteSuccessData ? (
+                <div className="space-y-5">
+                  <div className="text-center space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs border border-emerald-100">
+                      <Sparkles className="w-7 h-7" />
+                    </div>
+                    <h4 className="font-display font-bold text-slate-900 text-base">
+                      Employee Invitation Ready!
+                    </h4>
+                    <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                      <strong>{inviteSuccessData.invitation?.full_name}</strong> ({inviteSuccessData.invitation?.email}) has been invited. They will be prompted for OTP verification upon signing in.
+                    </p>
+                  </div>
+
+                  {/* Direct Link Box */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                      Shareable Direct Onboarding Link
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={inviteSuccessData.inviteUrl}
+                        className="w-full text-xs font-mono bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-700 select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(inviteSuccessData.inviteUrl, "modal-link")}
+                        className="px-3 py-2 bg-blue-900 hover:bg-blue-950 text-white rounded-lg font-bold flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                      >
+                        {copiedInviteId === "modal-link" ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Invitation Summary */}
+                  <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3.5 text-xs text-blue-950 space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold">Assigned Role:</span>
+                      <span className="font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded bg-blue-100/70 text-blue-900">
+                        {inviteSuccessData.invitation?.role === "owner" ? "Owner / Admin" : "Employee"}
+                      </span>
+                    </div>
+                    {inviteSuccessData.invitation?.desk_name && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 font-semibold">Desk:</span>
+                        <span className="font-semibold text-slate-800">{inviteSuccessData.invitation.desk_name}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold">Expiry:</span>
+                      <span className="font-semibold text-slate-800">
+                        {new Date(inviteSuccessData.invitation?.expires_at).toLocaleDateString()} (7 days)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInviteSuccessData(null);
+                        setInviteEmail("");
+                        setInviteFullName("");
+                        setInviteDeskName("");
+                        setInvitePhoneNumber("");
+                        setInviteNotes("");
+                      }}
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-center cursor-pointer transition-colors"
+                    >
+                      Invite Another
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInviteModal(false);
+                        setInviteSuccessData(null);
+                        setActiveTab("invitations");
+                      }}
+                      className="flex-1 py-2.5 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-center cursor-pointer shadow-sm transition-colors"
+                    >
+                      View Invitations Tab
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSendInvite} className="space-y-4">
+                  {inviteError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl flex items-center gap-2">
+                      <XCircle className="w-4 h-4 shrink-0" />
+                      <span className="font-semibold">{inviteError}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-slate-600 font-bold block mb-1">
+                        Employee Email Address <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="email"
+                          required
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="employee@domain.com"
+                          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        A one-time verification OTP will be required on their first login.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-600 font-bold block mb-1">
+                        Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          required
+                          value={inviteFullName}
+                          onChange={(e) => setInviteFullName(e.target.value)}
+                          placeholder="e.g. Priya Sundaram"
+                          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-600 font-bold block mb-1">Role</label>
+                        <select
+                          value={inviteRole}
+                          onChange={(e: any) => setInviteRole(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900 cursor-pointer"
+                        >
+                          <option value="employee">Employee Desk Staff</option>
+                          <option value="owner">Owner / Administrator</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-slate-600 font-bold block mb-1">Branch / Office</label>
+                        <select
+                          value={inviteBranchId}
+                          onChange={(e) => setInviteBranchId(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900 cursor-pointer"
+                        >
+                          {branches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name} ({b.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-600 font-bold block mb-1">Assigned Desk Name</label>
+                        <div className="relative">
+                          <Briefcase className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type="text"
+                            value={inviteDeskName}
+                            onChange={(e) => setInviteDeskName(e.target.value)}
+                            placeholder="e.g. Desk #3 - Aadhaar"
+                            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-slate-600 font-bold block mb-1">Phone Number</label>
+                        <div className="relative">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type="tel"
+                            value={invitePhoneNumber}
+                            onChange={(e) => setInvitePhoneNumber(e.target.value)}
+                            placeholder="+91 98765 43210"
+                            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-600 font-bold block mb-1">Onboarding Notes (Optional)</label>
+                      <textarea
+                        value={inviteNotes}
+                        onChange={(e) => setInviteNotes(e.target.value)}
+                        placeholder="e.g. Handles Tamil Nadu e-District portal and utility bill collections..."
+                        rows={2}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-900 focus:bg-white text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex items-start gap-2 text-[11px] text-amber-900">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      An invitation token will be created. The employee can follow the unique invite link or enter their email at login to receive an email OTP code and complete their profile setup.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowInviteModal(false)}
+                      className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 font-bold cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={inviteLoading}
+                      className="px-5 py-2 bg-blue-900 hover:bg-blue-950 text-white rounded-xl font-bold flex items-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all disabled:opacity-50"
+                    >
+                      {inviteLoading ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Send Invitation & Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               )}
             </div>
           </div>

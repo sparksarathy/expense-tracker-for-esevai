@@ -17,7 +17,8 @@ import {
   AuditLog,
   AppSettings,
   UserRole,
-  ServiceRateHistory
+  ServiceRateHistory,
+  EmployeeInvitation
 } from "../types";
 
 const DB_FILE_PATH = path.join(process.cwd(), "data", "db.json");
@@ -34,6 +35,7 @@ interface DatabaseSchema {
   audit_logs: AuditLog[];
   app_settings: AppSettings[];
   service_rate_history?: ServiceRateHistory[];
+  invitations?: EmployeeInvitation[];
 }
 
 let dbCache: DatabaseSchema | null = null;
@@ -87,49 +89,9 @@ function getInitialData(): DatabaseSchema {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
-    {
-      id: generateUUID(),
-      organization_id: orgId,
-      branch_id: branchId,
-      email: "employee1@esevai.com",
-      role: "employee",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: generateUUID(),
-      organization_id: orgId,
-      branch_id: branchId,
-      email: "employee2@esevai.com",
-      role: "employee",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: generateUUID(),
-      organization_id: orgId,
-      branch_id: branchId,
-      email: "employee3@esevai.com",
-      role: "employee",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: generateUUID(),
-      organization_id: orgId,
-      branch_id: branchId,
-      email: "employee4@esevai.com",
-      role: "employee",
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
   ];
 
-  // Pre-seed owner and employee profiles for frictionless login/simulation
+  // Pre-seed owner profile for administrator access
   const profiles: Profile[] = [
     {
       id: "admin-user-id-mock-uuid-key",
@@ -140,54 +102,6 @@ function getInitialData(): DatabaseSchema {
       role: "owner",
       is_active: true,
       joining_date: "2024-10-01",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "EMP-001",
-      organization_id: orgId,
-      branch_id: branchId,
-      full_name: "Arun Kumar",
-      email: "employee1@esevai.com",
-      role: "employee",
-      is_active: true,
-      joining_date: "2025-01-15",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "EMP-002",
-      organization_id: orgId,
-      branch_id: branchId,
-      full_name: "Priya Sharma",
-      email: "employee2@esevai.com",
-      role: "employee",
-      is_active: true,
-      joining_date: "2025-03-20",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "EMP-003",
-      organization_id: orgId,
-      branch_id: branchId,
-      full_name: "Karthik Raja",
-      email: "employee3@esevai.com",
-      role: "employee",
-      is_active: true,
-      joining_date: "2025-05-10",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "EMP-004",
-      organization_id: orgId,
-      branch_id: branchId,
-      full_name: "Anitha R.",
-      email: "employee4@esevai.com",
-      role: "employee",
-      is_active: true,
-      joining_date: "2025-06-01",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -261,112 +175,9 @@ function getInitialData(): DatabaseSchema {
     updated_at: new Date().toISOString(),
   };
 
-  // Generate some realistic sample transactions for the dashboard
+  // Fresh clean production state: No mock or sample transactions
   const incomeEntries: IncomeEntry[] = [];
   const expenseEntries: ExpenseEntry[] = [];
-
-  const customerNames = [
-    "Ramachandran K.",
-    "Muthu Kumar",
-    "Saraswathi Amma",
-    "Vijayalakshmi S.",
-    "Balamurugan R.",
-    "Meenakshi Sundaram",
-    "Chidambaram A.",
-    "Senthil Velan",
-    "Janaki R.",
-    "Subbiah Pillai",
-    "Rajeshwari M.",
-    "Kathiravan G."
-  ];
-
-  const methods: ("GPay" | "Cash in Hand")[] = ["GPay", "Cash in Hand"];
-  const expMethods: ("GPay" | "Cash in Hand" | "Bank Transfer" | "Other")[] = ["GPay", "Cash in Hand", "Bank Transfer", "Other"];
-
-  // Add 40 sample income transactions spread over the last 30 days
-  const nowTime = new Date();
-  for (let i = 0; i < 40; i++) {
-    const daysAgo = Math.floor(Math.random() * 30);
-    const date = new Date();
-    date.setDate(nowTime.getDate() - daysAgo);
-
-    const empIndex = Math.floor(Math.random() * profiles.length);
-    const emp = profiles[empIndex];
-    const customer = customerNames[Math.floor(Math.random() * customerNames.length)];
-    const serviceIndex = Math.floor(Math.random() * serviceCategories.length);
-    const service = serviceCategories[serviceIndex];
-
-    // Slight variance in standard rate
-    const finalRate = service.default_rate * (1 + (Math.random() * 0.2 - 0.1));
-    const roundedRate = Math.round(finalRate / 5) * 5 || 10; // Round to nearest 5
-
-    incomeEntries.push({
-      id: generateUUID(),
-      organization_id: orgId,
-      branch_id: branchId,
-      employee_id: emp.id,
-      customer_name: customer,
-      service_category_id: service.id,
-      payment_method: methods[Math.floor(Math.random() * methods.length)],
-      service_rate: roundedRate,
-      transaction_date: date.toISOString().split("T")[0],
-      notes: Math.random() > 0.7 ? "Fast-tracked application" : "",
-      created_by: emp.id,
-      created_at: date.toISOString(),
-      updated_at: date.toISOString(),
-      deleted_at: null,
-      service_id: service.id,
-      service_name_snapshot: service.service_name || service.category_name,
-      listed_rate: service.default_rate,
-      charged_rate: roundedRate,
-      rate_overridden: roundedRate !== service.default_rate,
-      rate_override_reason: roundedRate !== service.default_rate ? "Slight variance allowed" : "",
-    });
-  }
-
-  // Add 15 sample expense entries
-  const expenseDescriptions: { [key: string]: string[] } = {
-    "Printing": ["Laser Toner cartridge refilling", "Printer drum replacement"],
-    "Paper and Stationery": ["A4 Paper Boxes (5 rims)", "Double sided tape & file clips"],
-    "Internet": ["Monthly Fibernet Broadband pack", "Mobile hot-spot recharge"],
-    "Electricity": ["EB Meter reading July", "Replacement LED bulbs"],
-    "Rent": ["Office shop monthly rent deposit"],
-    "Employee Advance": ["Festival advance payout"],
-    "Other Expense": ["Drinking water can supply", "Tea and snacks for visitors"],
-  };
-
-  for (let i = 0; i < 15; i++) {
-    const daysAgo = Math.floor(Math.random() * 30);
-    const date = new Date();
-    date.setDate(nowTime.getDate() - daysAgo);
-
-    const empIndex = Math.floor(Math.random() * profiles.length);
-    const emp = profiles[empIndex];
-    const expIndex = Math.floor(Math.random() * expenseCategories.length);
-    const expCat = expenseCategories[expIndex];
-
-    const possibleDesc = expenseDescriptions[expCat.category_name] || ["Office maintenance & cleaning services"];
-    const desc = possibleDesc[Math.floor(Math.random() * possibleDesc.length)];
-    const amount = Math.floor(Math.random() * 400) + 100;
-
-    expenseEntries.push({
-      id: generateUUID(),
-      organization_id: orgId,
-      branch_id: branchId,
-      employee_id: emp.id,
-      expense_category_id: expCat.id,
-      description: desc,
-      amount: amount,
-      payment_method: expMethods[Math.floor(Math.random() * expMethods.length)],
-      transaction_date: date.toISOString().split("T")[0],
-      receipt_url: Math.random() > 0.5 ? "/placeholder_receipt.png" : undefined,
-      notes: "",
-      created_by: emp.id,
-      created_at: date.toISOString(),
-      updated_at: date.toISOString(),
-      deleted_at: null,
-    });
-  }
 
   return {
     organizations: [org],
@@ -380,6 +191,7 @@ function getInitialData(): DatabaseSchema {
     audit_logs: [],
     app_settings: [appSettings],
     service_rate_history: [],
+    invitations: [],
   };
 }
 
@@ -393,6 +205,9 @@ function readDb(): DatabaseSchema {
     if (fs.existsSync(DB_FILE_PATH)) {
       const data = fs.readFileSync(DB_FILE_PATH, "utf-8");
       dbCache = JSON.parse(data);
+      if (!dbCache!.invitations) {
+        dbCache!.invitations = [];
+      }
       return dbCache!;
     }
   } catch (error) {
@@ -575,6 +390,59 @@ export const db = {
   deleteApprovedUser: (email: string) => {
     const database = readDb();
     database.approved_users = database.approved_users.filter((u) => u.email.toLowerCase() !== email.toLowerCase());
+    writeDb(database);
+  },
+
+  // Employee Invitations
+  getInvitations: (): EmployeeInvitation[] => {
+    const database = readDb();
+    if (!database.invitations) database.invitations = [];
+    return database.invitations;
+  },
+
+  getInvitationByToken: (token: string): EmployeeInvitation | undefined => {
+    const database = readDb();
+    if (!database.invitations) database.invitations = [];
+    return database.invitations.find((i) => i.token === token);
+  },
+
+  getInvitationByEmail: (email: string): EmployeeInvitation | undefined => {
+    const database = readDb();
+    if (!database.invitations) database.invitations = [];
+    return database.invitations.find(
+      (i) => i.email.toLowerCase() === email.toLowerCase() && i.status === "pending"
+    );
+  },
+
+  addInvitation: (inv: Omit<EmployeeInvitation, "id" | "created_at">): EmployeeInvitation => {
+    const database = readDb();
+    if (!database.invitations) database.invitations = [];
+    const id = generateUUID();
+    const newInv: EmployeeInvitation = {
+      ...inv,
+      id,
+      created_at: new Date().toISOString(),
+    };
+    database.invitations.push(newInv);
+    writeDb(database);
+    return newInv;
+  },
+
+  updateInvitation: (id: string, updates: Partial<EmployeeInvitation>): EmployeeInvitation => {
+    const database = readDb();
+    if (!database.invitations) database.invitations = [];
+    const index = database.invitations.findIndex((i) => i.id === id);
+    if (index === -1) throw new Error("Invitation record not found");
+    const updated = { ...database.invitations[index], ...updates };
+    database.invitations[index] = updated;
+    writeDb(database);
+    return updated;
+  },
+
+  deleteInvitation: (id: string) => {
+    const database = readDb();
+    if (!database.invitations) database.invitations = [];
+    database.invitations = database.invitations.filter((i) => i.id !== id);
     writeDb(database);
   },
 

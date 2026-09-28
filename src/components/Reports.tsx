@@ -122,7 +122,7 @@ export default function Reports({ user }: ReportsProps) {
     if (!reportData) return;
     const { incomes, expenses } = reportData;
 
-    let headers = ["Record Type", "Date", "Customer Name/Description", "Category", "Payment Method", "Amount (INR)"];
+    let headers = ["Record Type", "Date", "Customer Name/Description", "Customer Number", "Category", "Payment Method", "Amount (INR)"];
     let rows: string[][] = [];
 
     incomes.forEach((i: any) => {
@@ -130,6 +130,7 @@ export default function Reports({ user }: ReportsProps) {
         "Income",
         i.transaction_date,
         i.customer_name,
+        i.customer_number || "",
         i.service_name || "e-Sevai Service",
         i.payment_method,
         i.service_rate.toString()
@@ -141,6 +142,7 @@ export default function Reports({ user }: ReportsProps) {
         "Expense",
         e.transaction_date,
         e.description,
+        "",
         e.category_name || "Office operating cost",
         e.payment_method,
         e.amount.toString()

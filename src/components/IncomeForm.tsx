@@ -7,7 +7,7 @@ import React, { useState, useEffect } from "react";
 import { Profile, ServiceCategory } from "../types";
 import { 
   CheckCircle2, RefreshCw, XCircle, ArrowLeft, Plus, 
-  HelpCircle, Sparkles, Sliders, Info
+  HelpCircle, Sparkles, Sliders, Info, Phone
 } from "lucide-react";
 
 interface IncomeFormProps {
@@ -27,6 +27,7 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
   
   // Form State
   const [customerName, setCustomerName] = useState("");
+  const [customerNumber, setCustomerNumber] = useState("");
   const [serviceCategoryId, setServiceCategoryId] = useState("");
   const [serviceRate, setServiceRate] = useState<string>("");
   const [listedRate, setListedRate] = useState<number | null>(null);
@@ -245,6 +246,7 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
 
       const payload = {
         customer_name: customerName.trim(),
+        customer_number: customerNumber.trim() || undefined,
         service_category_id: resolvedServiceCategoryId,
         payment_method: paymentMethod,
         service_rate: rateNum,
@@ -270,6 +272,7 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
       
       setConfirmedEntry({
         customer: customerName.trim(),
+        customer_number: customerNumber.trim() || undefined,
         service: selectedService ? (selectedService.service_name || selectedService.category_name) : resolvedServiceCategoryId,
         amount: rateNum,
         method: paymentMethod,
@@ -278,6 +281,7 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
 
       // Clear Form state
       setCustomerName("");
+      setCustomerNumber("");
       setServiceCategoryId("");
       setServiceRate("");
       setListedRate(null);
@@ -334,27 +338,47 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
       {/* Main form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 space-y-4" id="income-entry-form">
         
-        {/* Customer Name */}
-        <div>
-          <label htmlFor="customer-name" className="block text-xs font-bold text-slate-500 mb-1">
-            Customer Name <span className="text-rose-500">*</span>
-          </label>
-          <input
-            id="customer-name"
-            type="text"
-            required
-            list="customer-names-list"
-            placeholder="e.g. Subbiah Pillai"
-            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-900 text-slate-900 font-medium"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            disabled={loading}
-          />
-          <datalist id="customer-names-list">
-            {existingCustomers.map((cust, idx) => (
-              <option key={idx} value={cust} />
-            ))}
-          </datalist>
+        {/* Customer Details (Name & Phone Number) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label htmlFor="customer-name" className="block text-xs font-bold text-slate-500 mb-1">
+              Customer Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="customer-name"
+              type="text"
+              required
+              list="customer-names-list"
+              placeholder="e.g. Subbiah Pillai"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-900 text-slate-900 font-medium"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              disabled={loading}
+            />
+            <datalist id="customer-names-list">
+              {existingCustomers.map((cust, idx) => (
+                <option key={idx} value={cust} />
+              ))}
+            </datalist>
+          </div>
+
+          <div>
+            <label htmlFor="customer-number" className="block text-xs font-bold text-slate-500 mb-1">
+              Customer Mobile / Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <div className="relative">
+              <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                id="customer-number"
+                type="tel"
+                placeholder="e.g. 98765 43210"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-900 text-slate-900 font-medium"
+                value={customerNumber}
+                onChange={(e) => setCustomerNumber(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Service selection + Quick add */}
@@ -590,6 +614,12 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
                 <span className="text-slate-500">Customer:</span>
                 <span className="font-bold text-slate-800">{confirmedEntry.customer}</span>
               </div>
+              {confirmedEntry.customer_number && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mobile / Phone:</span>
+                  <span className="font-mono text-slate-700 font-medium">{confirmedEntry.customer_number}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500">Service:</span>
                 <span className="font-bold text-slate-800">{confirmedEntry.service}</span>

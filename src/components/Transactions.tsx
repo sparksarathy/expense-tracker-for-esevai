@@ -19,7 +19,8 @@ import {
   CheckCircle,
   AlertTriangle,
   RefreshCw,
-  Clock
+  Clock,
+  Phone
 } from "lucide-react";
 
 interface TransactionsProps {
@@ -153,13 +154,14 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
     let rows: string[][] = [];
 
     if (activeTab === "income") {
-      headers = ["Transaction Date", "Customer Name", "Service Category", "Payment Method", "Amount Rate (INR)", "Recorded By", "Notes"];
+      headers = ["Transaction Date", "Customer Name", "Customer Number", "Service Category", "Payment Method", "Amount Rate (INR)", "Recorded By", "Notes"];
       rows = listToExport.map((e) => {
         const cat = serviceCategories.find((c) => c.id === e.service_category_id);
         const emp = employees.find((emp) => emp.id === e.employee_id) || user;
         return [
           e.transaction_date,
           e.customer_name,
+          e.customer_number || "",
           cat ? cat.category_name : e.service_category_id,
           e.payment_method,
           e.service_rate.toString(),
@@ -247,6 +249,7 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
       const payload: any = {};
       if (activeTab === "income") {
         payload.customer_name = editItem.customer_name;
+        payload.customer_number = editItem.customer_number;
         payload.service_category_id = editItem.service_category_id;
         payload.service_rate = Number(editItem.service_rate);
         payload.payment_method = editItem.payment_method;
@@ -378,7 +381,7 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder={activeTab === "income" ? "Search customer name..." : "Search description..."}
+              placeholder={activeTab === "income" ? "Search customer name or phone..." : "Search description..."}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-600"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -555,7 +558,17 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
                       <td className="py-3.5 px-4 font-mono">{item.transaction_date}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-900">
-                        {activeTab === "income" ? item.customer_name : item.description}
+                        {activeTab === "income" ? (
+                          <div>
+                            <span>{item.customer_name}</span>
+                            {item.customer_number && (
+                              <span className="flex items-center gap-1 text-[11px] text-slate-500 font-mono font-normal mt-0.5">
+                                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>{item.customer_number}</span>
+                              </span>
+                            )}
+                          </div>
+                        ) : item.description}
                         {item.notes && (
                           <span className="block text-[10px] text-slate-400 font-normal mt-0.5 max-w-xs truncate">{item.notes}</span>
                         )}
@@ -624,6 +637,12 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
                       <h4 className="font-semibold text-slate-900 text-sm">
                         {activeTab === "income" ? item.customer_name : item.description}
                       </h4>
+                      {activeTab === "income" && item.customer_number && (
+                        <p className="flex items-center gap-1 text-[11px] text-slate-500 font-mono mt-0.5">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span>{item.customer_number}</span>
+                        </p>
+                      )}
                     </div>
                     <span className="font-bold font-mono text-sm shrink-0">
                       <span className={activeTab === "income" ? "text-emerald-700" : "text-rose-700"}>
@@ -736,6 +755,16 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 font-medium text-slate-900"
                       value={editItem.customer_name}
                       onChange={(e) => setEditItem({ ...editItem, customer_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Customer Mobile / Phone Number</label>
+                    <input
+                      type="tel"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 font-medium text-slate-900"
+                      value={editItem.customer_number || ""}
+                      placeholder="e.g. 98765 43210"
+                      onChange={(e) => setEditItem({ ...editItem, customer_number: e.target.value })}
                     />
                   </div>
                   <div>
