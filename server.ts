@@ -11,7 +11,7 @@ import { db } from "./src/db/localDb.ts";
 import { Profile, UserRole, PaymentMethod } from "./src/types.ts";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Body parser
 app.use(express.json());

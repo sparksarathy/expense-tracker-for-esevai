@@ -28,8 +28,8 @@ import {
   Menu,
   X,
   RefreshCw,
-  MapPin,
-  Clock
+  Wifi,
+  WifiOff
 } from "lucide-react";
 
 export default function App() {
@@ -41,12 +41,31 @@ export default function App() {
   // High-frequency refresh trigger for charts
   const [refreshCounter, setRefreshCounter] = useState(0);
 
+  // Network connectivity state for server-side sync alert
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   const checkSession = async () => {
     try {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
+        setUser(data.user || null);
       } else {
         setUser(null);
       }
@@ -181,6 +200,37 @@ export default function App() {
         {/* User profile details block */}
         <div className="border-t border-blue-800/50 pt-5 space-y-4" id="sidebar-footer">
           
+          {/* Network Connectivity Status Indicator */}
+          <div
+            className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+              isOnline
+                ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-200"
+                : "bg-red-950/70 border-red-500/60 text-red-100 animate-pulse shadow-md"
+            }`}
+            id="network-status-indicator"
+          >
+            <div className="flex items-center gap-2">
+              {isOnline ? (
+                <>
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">Online (Server Sync)</span>
+                </>
+              ) : (
+                <>
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400"></span>
+                  </span>
+                  <WifiOff className="w-3.5 h-3.5 text-red-300 shrink-0" />
+                  <span className="font-semibold truncate">Offline (No Connectivity)</span>
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="flex items-center gap-3">
             {user.avatar_url ? (
               <img
@@ -199,23 +249,6 @@ export default function App() {
               <span className="text-[10px] uppercase tracking-wider font-bold text-blue-300 opacity-80 block font-mono">
                 {user.role === "owner" ? "Owner/Admin" : "Desk Staff"}
               </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 bg-white/5 p-2.5 rounded-lg border border-blue-800/30 text-[10px] text-blue-200 font-mono" id="center-timezone">
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-blue-400" />
-                <span>Zone:</span>
-              </span>
-              <span className="font-semibold text-blue-100">IST</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-blue-400" />
-                <span>Format:</span>
-              </span>
-              <span className="font-semibold text-blue-100">DD/MM/YYYY</span>
             </div>
           </div>
 
@@ -239,6 +272,16 @@ export default function App() {
 
       {/* Main Workspace Frame */}
       <main className="flex-1 min-w-0" id="workspace-viewport">
+        {!isOnline && (
+          <div className="bg-amber-50 border-b border-amber-300 px-4 py-2.5 flex items-center justify-between text-amber-900 text-xs font-medium shadow-xs" id="workspace-offline-alert">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Network Disconnected:</strong> You are currently offline. Actions requiring live server synchronization will resume automatically when internet connectivity is restored.
+              </span>
+            </div>
+          </div>
+        )}
         {activeTab === "Dashboard" && (
           <Dashboard user={user} refreshCounter={refreshCounter} onNavigate={navigateTo} />
         )}

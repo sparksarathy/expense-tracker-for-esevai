@@ -122,7 +122,26 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
     );
   }
 
-  const { summary, revenueByCategory, expensesByCategory, revenueByEmployee, dailyBreakdown, incomes, expenses } = reportData;
+  const {
+    summary = {},
+    revenueByCategory = [],
+    expensesByCategory = [],
+    revenueByEmployee = [],
+    dailyBreakdown = [],
+    incomes = [],
+    expenses = []
+  } = reportData || {};
+
+  const safeSummary = {
+    totalIncome: summary?.totalIncome ?? 0,
+    totalExpense: summary?.totalExpense ?? 0,
+    netProfit: summary?.netProfit ?? 0,
+    totalTransactions: summary?.totalTransactions ?? 0,
+    avgTransactionValue: summary?.avgTransactionValue ?? 0,
+    cashReceived: summary?.cashReceived ?? 0,
+    gpayReceived: summary?.gpayReceived ?? 0,
+  };
+
   const isOwner = user.role === "owner";
 
   // Colors for charts
@@ -130,8 +149,8 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
 
   // Cash vs GPay data
   const paymentMethodsData = [
-    { name: "Cash in Hand", value: summary.cashReceived || 0 },
-    { name: "GPay", value: summary.gpayReceived || 0 },
+    { name: "Cash in Hand", value: safeSummary.cashReceived || 0 },
+    { name: "GPay", value: safeSummary.gpayReceived || 0 },
   ].filter(p => p.value > 0);
 
   return (
@@ -204,7 +223,7 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between" id="card-income">
           <div>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Total Income</p>
-            <h3 className="text-2xl font-bold text-slate-900">₹{Number(summary.totalIncome).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h3>
+            <h3 className="text-2xl font-bold text-slate-900">₹{Number(safeSummary.totalIncome).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h3>
           </div>
           <div className="mt-2 flex items-center text-emerald-600 text-xs font-bold">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="18 15 12 9 6 15"/></svg>
@@ -216,7 +235,7 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between" id="card-expenses">
           <div>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Total Expenses</p>
-            <h3 className="text-2xl font-bold text-slate-900">₹{Number(summary.totalExpense).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h3>
+            <h3 className="text-2xl font-bold text-slate-900">₹{Number(safeSummary.totalExpense).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h3>
           </div>
           <div className="mt-2 flex items-center text-rose-600 text-xs font-bold">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="6 9 12 15 18 9"/></svg>
@@ -229,7 +248,7 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
           <div>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Net Profit</p>
             <h3 className="text-2xl font-bold text-[#1e3a8a]">
-              ₹{Number(summary.netProfit).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              ₹{Number(safeSummary.netProfit).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </h3>
           </div>
           <div className="mt-2 flex items-center text-emerald-600 text-xs font-bold">
@@ -241,10 +260,10 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between" id="card-volume">
           <div>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Transactions</p>
-            <h3 className="text-2xl font-bold text-slate-900">{summary.totalTransactions}</h3>
+            <h3 className="text-2xl font-bold text-slate-900">{safeSummary.totalTransactions}</h3>
           </div>
           <div className="mt-2 flex items-center text-slate-400 text-xs font-medium">
-            <span>Avg. ₹{Number(summary.avgTransactionValue).toFixed(0)} / receipt</span>
+            <span>Avg. ₹{Number(safeSummary.avgTransactionValue).toFixed(0)} / receipt</span>
           </div>
         </div>
       </div>
@@ -253,15 +272,15 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs font-medium text-slate-600" id="collection-breakdowns">
         <div className="bg-white px-5 py-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between" id="sub-cash">
           <span>Collected in Cash</span>
-          <span className="font-bold text-slate-900">₹{Number(summary.cashReceived).toLocaleString("en-IN")}</span>
+          <span className="font-bold text-slate-900">₹{Number(safeSummary.cashReceived).toLocaleString("en-IN")}</span>
         </div>
         <div className="bg-white px-5 py-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between" id="sub-gpay">
           <span>Received via GPay</span>
-          <span className="font-bold text-slate-900">₹{Number(summary.gpayReceived).toLocaleString("en-IN")}</span>
+          <span className="font-bold text-slate-900">₹{Number(safeSummary.gpayReceived).toLocaleString("en-IN")}</span>
         </div>
         <div className="col-span-2 md:col-span-1 bg-white px-5 py-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between" id="sub-avg">
           <span>Avg Ticket size</span>
-          <span className="font-bold text-slate-900">₹{Number(summary.avgTransactionValue).toLocaleString("en-IN")}</span>
+          <span className="font-bold text-slate-900">₹{Number(safeSummary.avgTransactionValue).toLocaleString("en-IN")}</span>
         </div>
       </div>
 
