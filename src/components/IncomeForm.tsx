@@ -7,8 +7,15 @@ import React, { useState, useEffect } from "react";
 import { Profile, ServiceCategory } from "../types";
 import { 
   CheckCircle2, RefreshCw, XCircle, ArrowLeft, Plus, 
-  HelpCircle, Sparkles, Sliders, Info, Phone
+  HelpCircle, Sparkles, Sliders, Info, Phone, Database
 } from "lucide-react";
+import { 
+  authFetch, 
+  appendCachedIncome, 
+  getCachedServices, 
+  setCachedServices,
+  addToPendingQueue 
+} from "../lib/offlineStorage";
 
 interface IncomeFormProps {
   user: Profile;
@@ -19,7 +26,10 @@ interface IncomeFormProps {
 export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormProps) {
   const isOwner = user.role === "owner";
 
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>(() => {
+    const cached = getCachedServices();
+    return cached.filter((c: any) => c.is_active);
+  });
   const [employees, setEmployees] = useState<Profile[]>([]);
   const [allowEmployeeRateOverride, setAllowEmployeeRateOverride] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,21 +66,23 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
   const loadOptions = async () => {
     try {
       // 1. Fetch categories
-      const catRes = await fetch("/api/service-categories");
+      const catRes = await authFetch("/api/service-categories");
       if (catRes.ok) {
         const catData = await catRes.json();
-        setCategories(catData.categories.filter((c: any) => c.is_active));
+        const active = catData.categories.filter((c: any) => c.is_active);
+        setCategories(active);
+        setCachedServices(active);
       }
 
       // 2. Fetch system settings for override permissions
-      const setRes = await fetch("/api/settings");
+      const setRes = await authFetch("/api/settings");
       if (setRes.ok) {
         const setData = await setRes.json();
         setAllowEmployeeRateOverride(!!setData.settings.allow_employee_rate_override);
       }
 
       // 3. Fetch past customer names for datalist
-      const incRes = await fetch("/api/income-entries");
+      const incRes = await authFetch("/api/income-entries");
       if (incRes.ok) {
         const incData = await incRes.json();
         const customers = incData.entries.map((e: any) => e.customer_name);
@@ -80,14 +92,14 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
 
       // 4. Fetch profiles if owner
       if (isOwner) {
-        const empRes = await fetch("/api/employees");
+        const empRes = await authFetch("/api/employees");
         if (empRes.ok) {
           const empData = await empRes.json();
           setEmployees(empData.employees.filter((e: any) => e.is_active));
         }
       }
     } catch (err) {
-      console.error("Failed to load options for Income Form:", err);
+      console.warn("Using offline cached form options:", err);
     } finally {
       setFetchingOptions(false);
     }
@@ -256,15 +268,34 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
         rate_override_reason: isOverridden ? rateOverrideReason.trim() : ""
       };
 
-      const res = await fetch("/api/income-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let savedRecord: any = null;
+      try {
+        const res = await authFetch("/api/income-entries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to record transaction.");
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to record transaction.");
+        }
+        savedRecord = data.entry;
+        if (savedRecord) {
+          appendCachedIncome(savedRecord);
+        }
+      } catch (networkErr: any) {
+        // If offline or network issue, save locally so employee never loses data!
+        addToPendingQueue("income", payload);
+        const fallbackOfflineEntry = {
+          id: "offline-" + Date.now(),
+          ...payload,
+          service_name: selectedService ? (selectedService.service_name || selectedService.category_name) : resolvedServiceCategoryId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        appendCachedIncome(fallbackOfflineEntry as any);
+        savedRecord = fallbackOfflineEntry;
       }
 
       // Setup confirmation parameters
@@ -291,7 +322,7 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
       setShowConfirmModal(true);
       onSuccess(); // Triggers parent dashboard/ledger lists to reload
     } catch (err: any) {
-      setErrorMsg(err.message);
+      setErrorMsg(err?.message || "Failed to record income entry.");
     } finally {
       setLoading(false);
     }

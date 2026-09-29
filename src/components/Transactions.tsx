@@ -20,8 +20,18 @@ import {
   AlertTriangle,
   RefreshCw,
   Clock,
-  Phone
+  Phone,
+  Database
 } from "lucide-react";
+import {
+  getCachedIncomes,
+  setCachedIncomes,
+  getCachedExpenses,
+  setCachedExpenses,
+  getCachedServices,
+  setCachedServices,
+  authFetch,
+} from "../lib/offlineStorage";
 
 interface TransactionsProps {
   user: Profile;
@@ -31,16 +41,16 @@ interface TransactionsProps {
 export default function Transactions({ user, onRefreshTrigger }: TransactionsProps) {
   const [activeTab, setActiveTab] = useState<"income" | "expense">("income");
   
-  // Lists
-  const [incomes, setIncomes] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  // Lists initialized with locally restored data for instant offline access
+  const [incomes, setIncomes] = useState<any[]>(() => getCachedIncomes());
+  const [expenses, setExpenses] = useState<any[]>(() => getCachedExpenses());
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(() => getCachedServices());
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [employees, setEmployees] = useState<Profile[]>([]);
   const [appSettings, setAppSettings] = useState<any>(null);
   
-  // Loading states
-  const [loading, setLoading] = useState(true);
+  // Loading states (false if we already have local data)
+  const [loading, setLoading] = useState(() => getCachedIncomes().length === 0 && getCachedExpenses().length === 0);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,14 +82,15 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
     const fetchMasters = async () => {
       try {
         const [scRes, ecRes, setRes] = await Promise.all([
-          fetch("/api/service-categories"),
-          fetch("/api/expense-categories"),
-          fetch("/api/settings")
+          authFetch("/api/service-categories"),
+          authFetch("/api/expense-categories"),
+          authFetch("/api/settings")
         ]);
 
         if (scRes.ok) {
           const scData = await scRes.json();
           setServiceCategories(scData.categories);
+          setCachedServices(scData.categories);
         }
         if (ecRes.ok) {
           const ecData = await ecRes.json();
@@ -91,14 +102,14 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
         }
 
         if (user.role === "owner") {
-          const empRes = await fetch("/api/employees");
+          const empRes = await authFetch("/api/employees");
           if (empRes.ok) {
             const empData = await empRes.json();
             setEmployees(empData.employees);
           }
         }
       } catch (err) {
-        console.error("Failed loading master filters:", err);
+        console.warn("Using offline master cache:", err);
       }
     };
     fetchMasters();
@@ -106,12 +117,10 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
 
   // Fetch Transactions based on filter options
   const fetchTransactions = async () => {
-    setLoading(true);
     try {
       const query = new URLSearchParams();
       if (searchQuery) {
         if (activeTab === "income") query.append("customer", searchQuery);
-        // Expense search handled locally or simulated below
       }
       if (filterEmployeeId) query.append("employee_id", filterEmployeeId);
       if (filterCategoryId) {
@@ -124,17 +133,24 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
       query.append("sort_by", sortBy);
 
       const endpoint = activeTab === "income" ? "/api/income-entries" : "/api/expense-entries";
-      const res = await fetch(`${endpoint}?${query.toString()}`);
+      const res = await authFetch(`${endpoint}?${query.toString()}`);
       if (res.ok) {
         const data = await res.json();
         if (activeTab === "income") {
           setIncomes(data.entries);
+          // If viewing standard recent entries without search/dates, cache them
+          if (!searchQuery && !dateFrom && !dateTo && !filterEmployeeId && !filterCategoryId) {
+            setCachedIncomes(data.entries);
+          }
         } else {
           setExpenses(data.entries);
+          if (!searchQuery && !dateFrom && !dateTo && !filterEmployeeId && !filterCategoryId) {
+            setCachedExpenses(data.entries);
+          }
         }
       }
     } catch (err) {
-      console.error("Failed to load transactions list:", err);
+      console.warn("Transactions loaded from local storage cache:", err);
     } finally {
       setLoading(false);
     }

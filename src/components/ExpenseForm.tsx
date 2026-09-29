@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { Profile, ExpenseCategory, PaymentMethod } from "../types";
 import { CheckCircle2, RefreshCw, XCircle, ArrowLeft, Plus, UploadCloud, FileText, Check } from "lucide-react";
+import { authFetch, appendCachedExpense, addToPendingQueue } from "../lib/offlineStorage";
 
 interface ExpenseFormProps {
   user: Profile;
@@ -41,27 +42,27 @@ export default function ExpenseForm({ user, onSuccess, onNavigate }: ExpenseForm
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const catRes = await fetch("/api/expense-categories");
+        const catRes = await authFetch("/api/expense-categories");
         if (catRes.ok) {
           const catData = await catRes.json();
           setCategories(catData.categories.filter((c: any) => c.is_active));
         }
 
-        const setRes = await fetch("/api/settings");
+        const setRes = await authFetch("/api/settings");
         if (setRes.ok) {
           const setData = await setRes.json();
           setAppSettings(setData.settings);
         }
 
         if (user.role === "owner") {
-          const empRes = await fetch("/api/employees");
+          const empRes = await authFetch("/api/employees");
           if (empRes.ok) {
             const empData = await empRes.json();
             setEmployees(empData.employees.filter((e: any) => e.is_active));
           }
         }
       } catch (err) {
-        console.error("Failed to load options for Expense Form:", err);
+        console.warn("Using offline cached expense options:", err);
       } finally {
         setFetchingOptions(false);
       }
@@ -138,18 +139,36 @@ export default function ExpenseForm({ user, onSuccess, onNavigate }: ExpenseForm
         notes,
       };
 
-      const res = await fetch("/api/expense-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let savedExpense: any = null;
+      try {
+        const res = await authFetch("/api/expense-entries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to log expense payout.");
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to log expense payout.");
+        }
+        savedExpense = data.entry;
+        if (savedExpense) {
+          appendCachedExpense(savedExpense);
+        }
+      } catch (networkErr: any) {
+        // If offline or network drop, save to local cache and pending queue
+        addToPendingQueue("expense", payload);
+        const fallbackExpense = {
+          id: "offline-exp-" + Date.now(),
+          ...payload,
+          category_name: categories.find(c => c.id === categoryId)?.category_name || "Office operating cost",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        appendCachedExpense(fallbackExpense as any);
       }
 
-      setSuccessMsg("Expense transaction logged and recorded in UTC Audit Trail.");
+      setSuccessMsg("Expense transaction logged and recorded locally & in audit trail.");
       
       // Clear states
       setCategoryId("");

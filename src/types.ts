@@ -37,6 +37,8 @@ export interface Profile {
   full_name: string;
   email: string;
   role: UserRole;
+  password?: string;
+  pin?: string;
   is_active: boolean;
   avatar_url?: string;
   avatar_updated_at?: string;

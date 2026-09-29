@@ -35,6 +35,7 @@ import {
   Cell,
   Legend
 } from "recharts";
+import { getCachedReport, setCachedReport, authFetch } from "../lib/offlineStorage";
 
 interface DashboardProps {
   user: Profile;
@@ -47,24 +48,28 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getCachedReport()?.summary);
   const [error, setError] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<any>({
-    summary: {
-      totalIncome: 0,
-      totalExpense: 0,
-      netProfit: 0,
-      totalTransactions: 0,
-      avgTransactionValue: 0,
-      cashReceived: 0,
-      gpayReceived: 0,
-    },
-    revenueByCategory: [],
-    expensesByCategory: [],
-    revenueByEmployee: [],
-    dailyBreakdown: [],
-    incomes: [],
-    expenses: [],
+  const [reportData, setReportData] = useState<any>(() => {
+    const cached = getCachedReport();
+    if (cached && cached.summary) return cached;
+    return {
+      summary: {
+        totalIncome: 0,
+        totalExpense: 0,
+        netProfit: 0,
+        totalTransactions: 0,
+        avgTransactionValue: 0,
+        cashReceived: 0,
+        gpayReceived: 0,
+      },
+      revenueByCategory: [],
+      expensesByCategory: [],
+      revenueByEmployee: [],
+      dailyBreakdown: [],
+      incomes: [],
+      expenses: [],
+    };
   });
 
   // Calculate default dates based on filter preset
@@ -107,10 +112,11 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
       if (dateFrom) query.append("date_from", dateFrom);
       if (dateTo) query.append("date_to", dateTo);
       
-      const res = await fetch(`/api/reports?${query.toString()}`);
+      const res = await authFetch(`/api/reports?${query.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setReportData(data);
+        setCachedReport(data);
         setError(null);
       } else {
         const text = await res.text();

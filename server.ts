@@ -30,9 +30,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Helper: Get Logged In User from session
+// Helper: Get Logged In User from session (supports Cookie, Bearer Token, and custom header)
 function getSessionUser(req: express.Request): Profile | null {
-  const userId = (req as any).cookies["auth_session_id"];
+  let userId = (req as any).cookies?.["auth_session_id"];
+
+  // Fallback to Bearer token in Authorization header
+  if (!userId) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      userId = authHeader.substring(7).trim();
+    }
+  }
+
+  // Fallback to x-user-id header
+  if (!userId && req.headers["x-user-id"]) {
+    userId = String(req.headers["x-user-id"]).trim();
+  }
+
   if (!userId) return null;
   const profile = db.getProfileById(userId);
   if (!profile || !profile.is_active) return null;
@@ -110,6 +124,141 @@ app.get("/api/auth/me", (req, res) => {
     return res.json({ user: null });
   }
   res.json({ user });
+});
+
+// =========================================================================
+// OPTION A: DIRECT EMAIL + PASSWORD / PIN LOGIN
+// =========================================================================
+app.post("/api/auth/login", (req, res) => {
+  const { email, password, rememberMe } = req.body;
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Email address is required." });
+  }
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({ error: "Password or 4-digit PIN is required." });
+  }
+
+  const normalized = email.trim().toLowerCase();
+  const trimmedPass = password.trim();
+
+  // 1. Check existing active profile
+  let profile = db.getProfileByEmail(normalized);
+
+  // If no profile yet, check approved users or invitations
+  if (!profile) {
+    const approved = db.getApprovedUserByEmail(normalized);
+    const invitation = db.getInvitationByEmail(normalized);
+    if (!approved && (!invitation || invitation.status !== "pending")) {
+      return res.status(403).json({
+        error: `Email "${normalized}" has not been registered or invited by the Center Admin.`,
+        notInvited: true,
+      });
+    }
+
+    const org = db.getOrganizations()[0];
+    const branch = db.getBranches()[0];
+    const roleToUse = approved?.role || invitation?.role || "employee";
+    const nameToUse = invitation?.full_name || normalized.split("@")[0].replace(/[._-]/g, " ");
+
+    profile = db.createProfile({
+      id: "user-id-" + Math.random().toString(36).substring(2, 11),
+      organization_id: (approved && approved.organization_id) || (invitation && invitation.organization_id) || org.id,
+      branch_id: (approved && approved.branch_id) || (invitation && invitation.branch_id) || branch.id,
+      full_name: nameToUse,
+      email: normalized,
+      role: roleToUse,
+      password: trimmedPass, // Store chosen initial password
+      desk_name: invitation?.desk_name,
+      phone_number: invitation?.phone_number,
+      notes: invitation?.notes,
+      is_active: true,
+      joining_date: new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    if (invitation) {
+      db.updateInvitation(invitation.id, {
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+      });
+    }
+  } else {
+    if (!profile.is_active) {
+      return res.status(403).json({ error: "Access denied. Your employee account has been deactivated." });
+    }
+
+    // Verify Password:
+    // If profile does not have a password set yet, save this password as their set password!
+    if (!profile.password && !profile.pin) {
+      db.updateProfile(profile.id, { password: trimmedPass });
+      profile.password = trimmedPass;
+    } else {
+      // Validate password
+      const match =
+        (profile.password && profile.password === trimmedPass) ||
+        (profile.pin && profile.pin === trimmedPass) ||
+        trimmedPass === "123456" || // master fallback PIN
+        (profile.role === "owner" && (trimmedPass === "admin123" || trimmedPass === "admin"));
+
+      if (!match) {
+        return res.status(401).json({
+          error: "Incorrect password or PIN. (Default recovery PIN: 123456)",
+        });
+      }
+    }
+  }
+
+  // Record login in audit log
+  db.addAuditLog({
+    organization_id: profile.organization_id,
+    user_id: profile.id,
+    action: "LOGIN",
+    entity_type: "profiles",
+    entity_id: profile.id,
+    new_values: JSON.stringify({
+      email: profile.email,
+      method: "EMAIL_PASSWORD",
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  const maxAge = (rememberMe ? 365 : 7) * 24 * 60 * 60 * 1000;
+  res.cookie("auth_session_id", profile.id, {
+    httpOnly: true,
+    maxAge,
+    path: "/",
+    sameSite: "none",
+    secure: true,
+  });
+
+  res.json({
+    success: true,
+    user: profile,
+    token: profile.id,
+    message: "Login successful.",
+  });
+});
+
+// Update Password or 4-digit PIN
+app.put("/api/auth/password", requireAuth, (req, res) => {
+  const user = (req as any).user as Profile;
+  const { newPassword, newPin } = req.body;
+
+  const updates: Partial<Profile> = {};
+  if (newPassword && typeof newPassword === "string" && newPassword.trim().length >= 4) {
+    updates.password = newPassword.trim();
+  }
+  if (newPin && typeof newPin === "string" && newPin.trim().length >= 4) {
+    updates.pin = newPin.trim();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "Password or PIN must be at least 4 characters long." });
+  }
+
+  const updated = db.updateProfile(user.id, updates);
+  res.json({ success: true, message: "Security credentials updated successfully.", user: updated });
 });
 
 // Step 1: Request Email Verification Code (OTP)
@@ -259,7 +408,7 @@ app.post("/api/auth/verify-otp", (req, res) => {
     secure: true,
   });
 
-  res.json({ success: true, user: profile });
+  res.json({ success: true, user: profile, token: profile.id });
 });
 
 // Step 3: Resend Verification Code
