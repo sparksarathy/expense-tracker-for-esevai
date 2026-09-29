@@ -8,8 +8,7 @@ import { Profile } from "../types";
 import { 
   LogIn, ShieldAlert, CheckCircle, RefreshCw, Mail, 
   KeyRound, ArrowLeft, Sparkles, Check, Send, Eye, EyeOff,
-  ShieldCheck, Lock, Smartphone, Database, AlertCircle, X,
-  UserCheck, UserPlus
+  ShieldCheck, Lock, AlertCircle, X, UserPlus
 } from "lucide-react";
 import { setCachedSession, getCachedUser, authFetch } from "../lib/offlineStorage";
 
@@ -42,7 +41,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [pendingApprovalNotice, setPendingApprovalNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [quickLoginList, setQuickLoginList] = useState<Profile[]>([]);
 
   useEffect(() => {
     // Check if there was a previously remembered user email to pre-fill
@@ -51,17 +49,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       setEmail(previousUser.email);
     }
 
-    // 1. Fetch pre-approved list for the emulator quick selection
-    fetch("/api/auth/approved-list")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.approved) {
-          setQuickLoginList(data.approved);
-        }
-      })
-      .catch((err) => console.error("Error loading emulator logins:", err));
-
-    // 2. Check for invitation URL query parameters (?invite=...&email=...)
+    // Check for invitation URL query parameters (?invite=...&email=...)
     try {
       const params = new URLSearchParams(window.location.search);
       const inviteEmail = params.get("email");
@@ -122,14 +110,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         if (data.pendingApproval) {
           setShowGoogleModal(false);
           setPendingApprovalNotice(cleanEmail);
-          setError(`Access Request Sent: Your Google ID (${cleanEmail}) has not been approved by the Admin yet. The Center Admin can approve your account in the Employee Access console.`);
+          setError(`Access Request Sent: Your Google ID (${cleanEmail}) has not been approved by the Admin yet. The Center Admin has received your request and can approve your account.`);
           return;
         }
         throw new Error(data.error || "Google Sign-in was not authorized.");
       }
 
       setShowGoogleModal(false);
-      // Auto-restore session in localStorage
       setCachedSession(data.user, data.token, true);
       onLoginSuccess(data.user);
     } catch (err: any) {
@@ -181,6 +168,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       }
 
       if (!res.ok) {
+        if (data.notInvited) {
+          // Send access request automatically
+          await authFetch("/api/auth/google", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: cleanEmail, name: cleanEmail.split("@")[0] }),
+          }).catch(() => {});
+          setPendingApprovalNotice(cleanEmail);
+          setError(`Access Request Sent: Your email (${cleanEmail}) is not approved yet. An access request has been automatically sent to the Admin.`);
+          return;
+        }
         throw new Error(data.error || "Authentication failed. Please check your credentials.");
       }
 
@@ -295,30 +293,20 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
   };
 
-  // Quick select helper for emulator
-  const handleQuickSelect = (p: Profile) => {
-    setEmail(p.email);
-    const pass = p.role === "owner" ? "admin123" : "123456";
-    setPassword(pass);
-    setMode("password");
-    setError(null);
-    setInfoMsg(`Pre-filled ${p.full_name} (${p.email}) credentials.`);
-  };
-
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-slate-50 py-12" id="login-screen">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-slate-50 py-10 font-sans" id="login-screen">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden" id="login-card">
         
-        {/* Top Banner */}
+        {/* Top Banner with exact title */}
         <div className="bg-gradient-to-br from-[#1e3a8a] via-[#172554] to-slate-900 px-6 py-7 text-center text-white relative">
           <div className="inline-flex p-3 bg-white/10 rounded-2xl mb-2.5 backdrop-blur-md border border-white/10 shadow-inner">
             <LogIn className="w-7 h-7 text-blue-200" />
           </div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">e-Sevai Maiyam</h1>
-          <p className="text-blue-200 text-xs mt-0.5 font-sans font-medium">Income & Expense Manager</p>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-2 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-[11px] text-emerald-200 font-medium">
-            <ShieldCheck className="w-3 h-3 text-emerald-300" />
-            <span>Google Login & Admin Approval Enforced</span>
+          <h1 className="text-2xl font-bold tracking-tight uppercase">SS E-SEVAI MAIYAM</h1>
+          <p className="text-blue-200 text-xs mt-1 font-medium">Income & Expense Management Portal</p>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-2.5 bg-white/10 border border-white/10 rounded-full text-xs text-blue-100 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+            <span>Authorized Staff & Admin Login</span>
           </div>
         </div>
 
@@ -327,13 +315,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           
           {/* Pending Approval Notice */}
           {pendingApprovalNotice && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-950 text-xs space-y-1.5">
+            <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-950 text-xs space-y-1.5 animate-in fade-in">
               <div className="flex items-center gap-2 font-bold text-amber-900">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Google ID Awaiting Admin Approval</span>
+                <span>Account Awaiting Admin Approval</span>
               </div>
               <p className="leading-relaxed text-amber-900/90">
-                Your Google account <strong>{pendingApprovalNotice}</strong> has requested access. The Center Admin has been notified and can approve your account in the <strong>Employee Access</strong> dashboard.
+                Your email address <strong>{pendingApprovalNotice}</strong> has requested access to the portal. The Center Admin has received your request and can approve your account in the <strong>Employee Access</strong> dashboard.
               </p>
             </div>
           )}
@@ -381,7 +369,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-white px-2.5 text-slate-400 font-semibold tracking-wider text-[11px]">
-                  or sign in with password
+                  or sign in with email
                 </span>
               </div>
             </div>
@@ -404,7 +392,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     type="email"
                     required
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium text-slate-900 placeholder:text-slate-400"
-                    placeholder="e.g. csb21090@gmail.com or staff@gmail.com"
+                    placeholder="Enter your email (e.g. staff@gmail.com)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -439,6 +427,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 </div>
               </div>
 
+              {/* Remember Me Option (Clean, no auto-restore wording) */}
               <div className="flex items-center justify-between pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
@@ -448,7 +437,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
                   />
                   <span className="text-xs font-medium text-slate-600">
-                    Stay logged in & restore data automatically
+                    Keep me signed in on this device
                   </span>
                 </label>
               </div>
@@ -462,7 +451,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Signing in & Restoring Data...</span>
+                    <span>Signing in...</span>
                   </>
                 ) : (
                   <>
@@ -511,7 +500,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     type="email"
                     required
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium text-slate-800 placeholder:text-slate-400"
-                    placeholder="Enter registered email"
+                    placeholder="Enter your email (e.g. staff@gmail.com)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -640,45 +629,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </div>
           )}
 
-          {/* Quick Staff Roster Emulator Section */}
-          {quickLoginList.length > 0 && (
-            <div className="mt-7 border-t border-slate-100 pt-5" id="quick-login-section">
-              <div className="flex items-center gap-1.5 text-slate-500 mb-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-semibold tracking-wide uppercase">Quick Staff Login (1-Click)</span>
-              </div>
-              <p className="text-slate-400 text-[11px] mb-3">
-                Click any staff desk below to test or auto-fill credentials:
-              </p>
-              
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {quickLoginList.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleQuickSelect(p)}
-                    disabled={loading}
-                    type="button"
-                    className="w-full flex items-center justify-between text-left px-3 py-2 bg-slate-50 hover:bg-blue-50/70 rounded-xl border border-slate-100 hover:border-blue-200 text-xs font-sans transition-all cursor-pointer group"
-                  >
-                    <div>
-                      <p className="font-semibold text-slate-800 group-hover:text-blue-900">{p.full_name}</p>
-                      <p className="text-slate-400 font-mono text-[10px] mt-0.5">{p.email}</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full font-medium text-[9px] tracking-wide uppercase ${
-                      p.role === "owner" ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-blue-50 text-blue-700 border border-blue-100"
-                    }`}>
-                      {p.role}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* GOOGLE ACCOUNT SELECTOR MODAL DIALOG */}
+      {/* GOOGLE ACCOUNT SIGN-IN MODAL DIALOG */}
       {/* ========================================================================= */}
       {showGoogleModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
@@ -691,7 +646,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <span className="font-bold text-sm text-slate-800">Choose a Google Account</span>
+                <span className="font-bold text-sm text-slate-800">Sign in with Google</span>
               </div>
               <button
                 type="button"
@@ -702,78 +657,57 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </button>
             </div>
 
-            <p className="text-xs text-slate-500">
-              Select or enter your Google account to log in to <strong>e-Sevai Maiyam</strong>:
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Enter your Google account (@gmail.com) to access <strong>SS E-SEVAI MAIYAM</strong>:
             </p>
 
-            {/* Quick 1-Click Center Owner Google Account */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleGoogleSignIn("csb21090@gmail.com", "Spark", "https://ui-avatars.com/api/?name=Spark&background=1e3a8a&color=fff")}
-                disabled={loading}
-                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50/80 rounded-xl border border-slate-200 text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-900 text-white font-bold flex items-center justify-center text-xs">
-                    S
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 group-hover:text-blue-950">Spark (Center Owner)</p>
-                    <p className="text-[11px] text-slate-500 font-mono">csb21090@gmail.com</p>
-                  </div>
-                </div>
-                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
-                  Admin
-                </span>
-              </button>
-            </div>
-
-            {/* Custom Google Email Form */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleGoogleSignIn(googleEmailInput, googleNameInput);
               }}
-              className="space-y-3 pt-2 border-t border-slate-100"
+              className="space-y-3 pt-1"
             >
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                <UserPlus className="w-4 h-4 text-blue-600" />
-                <span>Use another Google account</span>
-              </div>
-              
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Google Email Address *
+                </label>
                 <input
                   type="email"
                   required
-                  placeholder="Enter employee Google email (@gmail.com)"
+                  placeholder="Enter your email (e.g. staff@gmail.com)"
                   value={googleEmailInput}
                   onChange={(e) => setGoogleEmailInput(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                  autoFocus
                 />
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Staff / Admin Name
+                </label>
                 <input
                   type="text"
-                  placeholder="Staff Name (Optional)"
+                  placeholder="Enter your full name"
                   value={googleNameInput}
                   onChange={(e) => setGoogleNameInput(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading || !googleEmailInput}
-                className="w-full py-2.5 px-4 bg-[#1e3a8a] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="w-full py-3 px-4 bg-[#1e3a8a] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
               >
-                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>Sign In with this Google ID</span>}
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                <span>Continue with Google</span>
               </button>
             </form>
 
-            <div className="pt-2 text-center text-[10px] text-slate-400">
-              Only Google IDs approved by the Center Admin can access the system.
+            <div className="pt-2 text-center text-[11px] text-slate-400 leading-normal">
+              New employees will be sent to the Admin for one-click approval before entering.
             </div>
           </div>
         </div>

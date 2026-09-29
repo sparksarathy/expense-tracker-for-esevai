@@ -201,8 +201,10 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
             <span>Vanakkam, {user.full_name.split(" ")[0]}!</span>
             <Sparkles className="w-5 h-5 text-[#7e22ce] animate-pulse" />
           </h1>
-          <p className="text-slate-500 text-xs mt-1 font-medium">
-            {isOwner ? "E-Sevai Admin Center Console" : `Employee Desk Dashboard - ${user.full_name}`}
+          <p className="text-slate-500 text-xs mt-1 font-medium flex flex-wrap items-center gap-2">
+            <span className="font-bold text-slate-700">{isOwner ? "SS E-SEVAI MAIYAM Admin Console" : "SS E-SEVAI MAIYAM Staff Desk"}</span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <span className="font-mono text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 font-semibold text-[11px]">{user.email}</span>
           </p>
         </div>
 

@@ -2,9 +2,9 @@
   "organizations": [
     {
       "id": "88888888-8888-4888-a888-888888888888",
-      "name": "e-Sevai Maiyam Main Center",
+      "name": "SS E-SEVAI MAIYAM",
       "logo_url": "",
-      "address": "12, Kamarajar Street, Near Bus Stand, Madurai, Tamil Nadu - 625001",
+      "address": "Main Road, Near Bus Stand, Tamil Nadu",
       "phone": "+91 9876543210",
       "email": "contact@esevaimaiyam.in",
       "timezone": "Asia/Kolkata",
@@ -17,8 +17,8 @@
     {
       "id": "77777777-7777-4777-a777-777777777777",
       "organization_id": "88888888-8888-4888-a888-888888888888",
-      "name": "Madurai Town Branch",
-      "address": "12, Kamarajar Street, Near Bus Stand, Madurai",
+      "name": "Main Branch",
+      "address": "Main Road, Near Bus Stand",
       "is_active": true,
       "created_at": "2026-07-19T11:50:31.709Z",
       "updated_at": "2026-07-19T11:50:31.709Z"
@@ -35,12 +35,13 @@
       "is_active": true,
       "joining_date": "2024-10-01",
       "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-09-28T17:07:02.798Z",
+      "updated_at": "2026-09-29T07:04:54.722Z",
       "desk_name": "Main Admin Desk",
       "phone_number": "+91 9876543210",
       "notes": "Primary Center Administrator & Owner",
-      "avatar_url": null,
-      "avatar_updated_at": null
+      "avatar_url": "https://ui-avatars.com/api/?name=Spark&background=1e3a8a&color=fff",
+      "avatar_updated_at": null,
+      "google_id": "g-y6iye1g5"
     }
   ],
   "approved_users": [
@@ -351,7 +352,17 @@
   ],
   "income_entries": [],
   "expense_entries": [],
-  "audit_logs": [],
+  "audit_logs": [
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGOUT",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "id": "5ebcabdf-c34e-4e66-be6c-1e765d55980d",
+      "created_at": "2026-09-29T07:04:45.645Z"
+    }
+  ],
   "app_settings": [
     {
       "id": "89f19b2e-94ae-41b2-b0df-cc0306a98c94",
@@ -364,5 +375,6 @@
     }
   ],
   "service_rate_history": [],
-  "invitations": []
+  "invitations": [],
+  "google_requests": []
 }

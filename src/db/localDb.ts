@@ -59,9 +59,9 @@ function getInitialData(): DatabaseSchema {
 
   const org: Organization = {
     id: orgId,
-    name: "e-Sevai Maiyam Main Center",
+    name: "SS E-SEVAI MAIYAM",
     logo_url: "",
-    address: "12, Kamarajar Street, Near Bus Stand, Madurai, Tamil Nadu - 625001",
+    address: "Main Road, Near Bus Stand, Tamil Nadu",
     phone: "+91 9876543210",
     email: "contact@esevaimaiyam.in",
     timezone: "Asia/Kolkata",
@@ -73,8 +73,8 @@ function getInitialData(): DatabaseSchema {
   const branch: Branch = {
     id: branchId,
     organization_id: orgId,
-    name: "Madurai Town Branch",
-    address: "12, Kamarajar Street, Near Bus Stand, Madurai",
+    name: "Main Branch",
+    address: "Main Road, Near Bus Stand",
     is_active: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

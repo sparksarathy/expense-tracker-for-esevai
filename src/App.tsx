@@ -50,7 +50,9 @@ import {
   Download,
   Upload,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Bell,
+  Mail
 } from "lucide-react";
 
 export default function App() {
@@ -73,6 +75,27 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== "undefined" ? navigator.onLine : true
   );
+
+  // Admin Pending Access Requests count
+  const [pendingAccessRequests, setPendingAccessRequests] = useState(0);
+
+  useEffect(() => {
+    if (user?.role === "owner") {
+      const checkRequests = () => {
+        authFetch("/api/admin/google-requests")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.requests) {
+              setPendingAccessRequests(data.requests.filter((r: any) => r.status === "pending").length);
+            }
+          })
+          .catch(() => {});
+      };
+      checkRequests();
+      const interval = setInterval(checkRequests, 12000);
+      return () => clearInterval(interval);
+    }
+  }, [user, refreshCounter]);
 
   // Background queue flusher when back online
   const syncPendingOfflineQueue = async () => {
@@ -264,26 +287,30 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900" id="main-application-frame">
       
       {/* Mobile Top Navigation Bar (Hidden on Desktop) */}
-      <header className="md:hidden bg-[#1e3a8a] text-white px-4 py-3.5 flex items-center justify-between shadow-md z-40 no-print" id="mobile-app-bar">
-        <div className="flex items-center gap-2">
+      <header className="md:hidden bg-[#1e3a8a] text-white px-4 py-3 flex items-center justify-between shadow-md z-40 no-print" id="mobile-app-bar">
+        <div className="flex items-center gap-2.5">
           <div className="p-1.5 bg-white/10 rounded-lg text-white font-bold text-xs uppercase tracking-wider">
-            eS
+            SS
           </div>
           <div>
-            <h1 className="font-display font-bold text-sm tracking-wide uppercase">e-Sevai Maiyam</h1>
-            <p className="text-[9px] text-blue-200 uppercase tracking-widest font-semibold">Manager v1.0</p>
+            <h1 className="font-bold text-sm tracking-wide uppercase">SS E-SEVAI MAIYAM</h1>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-blue-200 font-mono font-medium truncate max-w-[170px]">{user.email}</span>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowBackupModal(true)}
-            className="p-1.5 bg-white/10 rounded-lg text-emerald-300 text-xs flex items-center gap-1 font-semibold"
-            title="Local Data & Restore"
-          >
-            <Database className="w-4 h-4" />
-            <span className="text-[10px] hidden sm:inline">Restored</span>
-          </button>
+          {user.role === "owner" && pendingAccessRequests > 0 && (
+            <button
+              onClick={() => { navigateTo("Employee Access"); setMobileMenuOpen(false); }}
+              className="px-2 py-1 bg-amber-400 text-amber-950 rounded-lg text-xs font-bold flex items-center gap-1 animate-pulse"
+              title="Pending Access Requests"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span>{pendingAccessRequests}</span>
+            </button>
+          )}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-1.5 hover:bg-white/10 rounded-lg transition-all"
@@ -304,13 +331,8 @@ export default function App() {
           
           {/* Logo block */}
           <div className="flex flex-col border-b border-blue-800/50 pb-5" id="sidebar-logo-block">
-            <h1 className="text-xl font-bold tracking-tight uppercase">e-Sevai Maiyam</h1>
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-xs text-blue-300 opacity-80 uppercase tracking-widest">Manager v1.0</p>
-              <span className="text-[9px] bg-emerald-500/20 text-emerald-200 px-1.5 py-0.5 rounded border border-emerald-400/30 font-mono">
-                Auto-Restore
-              </span>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight uppercase">SS E-SEVAI MAIYAM</h1>
+            <p className="text-xs text-blue-300 opacity-80 uppercase tracking-widest mt-1">Management Portal</p>
           </div>
 
           {/* Nav Items List */}
@@ -339,7 +361,7 @@ export default function App() {
         {/* User profile & Data status footer */}
         <div className="border-t border-blue-800/50 pt-5 space-y-3" id="sidebar-footer">
           
-          {/* Data Backup & Auto-Restore Button */}
+          {/* Data Backup Button (Clean, no auto-restore wording) */}
           <button
             onClick={() => setShowBackupModal(true)}
             className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-xs text-blue-100 transition-all cursor-pointer border border-white/10"
@@ -348,8 +370,8 @@ export default function App() {
             <div className="flex items-center gap-2">
               <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="text-left">
-                <span className="font-semibold block text-[11px] leading-tight">Data Restored</span>
-                <span className="text-[9px] text-blue-200 font-mono">{cachedIncomesCount + cachedExpensesCount} records local</span>
+                <span className="font-semibold block text-[11px] leading-tight">Data Storage</span>
+                <span className="text-[9px] text-blue-200 font-mono">{cachedIncomesCount + cachedExpensesCount} records safe</span>
               </div>
             </div>
             {pendingCount > 0 && (
@@ -381,7 +403,7 @@ export default function App() {
               ) : (
                 <>
                   <WifiOff className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span className="truncate text-[11px]">Offline (Local Storage Active)</span>
+                  <span className="truncate text-[11px]">Offline Mode Active</span>
                 </>
               )}
             </div>
@@ -393,18 +415,24 @@ export default function App() {
                 src={user.avatar_url}
                 alt={user.full_name}
                 referrerPolicy="no-referrer"
-                className="w-9 h-9 rounded-full object-cover border border-blue-400 shadow-sm shrink-0"
+                className="w-10 h-10 rounded-full object-cover border border-blue-400 shadow-sm shrink-0"
               />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-xs">
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-xs">
                 {user.full_name ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "EM"}
               </div>
             )}
             <div className="space-y-0.5 truncate text-left">
-              <h4 className="text-xs font-semibold text-white truncate leading-tight">{user.full_name}</h4>
-              <span className="text-[9px] uppercase tracking-wider font-bold text-blue-300 opacity-80 block font-mono">
-                {user.role === "owner" ? "Owner/Admin" : "Desk Staff"}
-              </span>
+              <h4 className="text-xs font-bold text-white truncate leading-tight">{user.full_name}</h4>
+              <p className="text-[11px] text-blue-200 truncate font-mono font-medium">{user.email}</p>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="text-[9px] uppercase tracking-wider font-extrabold text-blue-100 bg-white/10 px-1.5 py-0.2 rounded font-mono">
+                  {user.role === "owner" ? "Owner/Admin" : "Desk Staff"}
+                </span>
+                {user.desk_name && (
+                  <span className="text-[9px] text-blue-300 truncate">({user.desk_name})</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -428,12 +456,68 @@ export default function App() {
 
       {/* Main Workspace Frame */}
       <main className="flex-1 min-w-0" id="workspace-viewport">
+        {/* Workspace Top Header Bar */}
+        <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-30 no-print" id="workspace-top-bar">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#1e3a8a] bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+              {activeTab}
+            </span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:inline">
+              SS E-SEVAI MAIYAM
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Admin Access Requests Notification Badge */}
+            {user.role === "owner" && pendingAccessRequests > 0 && (
+              <button
+                onClick={() => navigateTo("Employee Access")}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer animate-pulse"
+                title="Review and approve new employee requests"
+              >
+                <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>{pendingAccessRequests} Access Request{pendingAccessRequests > 1 ? "s" : ""}</span>
+              </button>
+            )}
+
+            {/* User Profile Pill displaying their own email */}
+            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.full_name}
+                  referrerPolicy="no-referrer"
+                  className="w-7 h-7 rounded-full object-cover border border-slate-300 shrink-0"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-[#1e3a8a] text-white flex items-center justify-center font-bold text-[11px] shrink-0">
+                  {user.full_name ? user.full_name[0].toUpperCase() : "U"}
+                </div>
+              )}
+              <div className="text-left text-xs leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800">{user.full_name}</span>
+                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full ${
+                    user.role === "owner" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+                  }`}>
+                    {user.role === "owner" ? "Admin" : "Employee"}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-mono font-medium block">
+                  {user.email}
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
         {!isOnline && (
           <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center justify-between text-amber-900 text-xs font-medium shadow-xs" id="workspace-offline-alert">
             <div className="flex items-center gap-2">
               <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                <strong>Offline Mode Active:</strong> You can continue entering incomes and expenses. All records are saved securely in your browser and will automatically restore and sync when internet reconnects.
+                <strong>Offline Mode Active:</strong> You can continue entering incomes and expenses. All records are saved securely in your browser and will automatically sync when internet reconnects.
               </span>
             </div>
           </div>

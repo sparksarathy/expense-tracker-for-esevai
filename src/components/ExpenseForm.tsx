@@ -261,7 +261,7 @@ export default function ExpenseForm({ user, onSuccess, onNavigate }: ExpenseForm
             id="description"
             type="text"
             required
-            placeholder="e.g. EB Bill payment Madurai center shop"
+            placeholder="e.g. Electricity bill payment for center shop"
             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-purple-600 transition-all"
             value={description}
             onChange={(e) => setDescription(e.target.value)}

@@ -964,7 +964,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
           }`}
         >
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Google ID Approvals</span>
+          <span>Access Approvals</span>
           {googleRequests.filter(r => r.status === "pending").length > 0 && (
             <span className="bg-amber-400 text-amber-950 font-black text-[10px] px-1.5 py-0.2 rounded-full animate-pulse">
               {googleRequests.filter(r => r.status === "pending").length} new
@@ -1505,10 +1505,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-slate-900 text-base">
-                    Employee Google ID Approvals & Access Control
+                    Employee Access & Email ID Approvals
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Approve staff Google email accounts (@gmail.com) to allow them to sign in with Google. Review and grant 1-click access to pending employee sign-in requests.
+                    Approve staff Google or Email accounts to grant access to the portal. Review pending access requests or pre-approve new staff desks.
                   </p>
                 </div>
               </div>
@@ -1543,7 +1543,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600" />
                 <h4 className="font-bold text-sm text-slate-800">
-                  Pending Google Sign-In Requests
+                  Pending Portal Access Requests
                 </h4>
                 <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
                   {googleRequests.filter((r) => r.status === "pending").length} Awaiting Approval
@@ -1556,7 +1556,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto" />
                 <p className="text-xs font-semibold text-slate-700">No Pending Requests</p>
                 <p className="text-[11px] text-slate-400">
-                  When an unapproved employee attempts to sign in with Google, their access request will appear here for one-click approval.
+                  When an unapproved employee attempts to sign in via Google or Email, their access request will appear here for one-click approval.
                 </p>
               </div>
             ) : (
