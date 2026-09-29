@@ -48,7 +48,24 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
   const [dateTo, setDateTo] = useState<string>("");
   
   const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<any>({
+    summary: {
+      totalIncome: 0,
+      totalExpense: 0,
+      netProfit: 0,
+      totalTransactions: 0,
+      avgTransactionValue: 0,
+      cashReceived: 0,
+      gpayReceived: 0,
+    },
+    revenueByCategory: [],
+    expensesByCategory: [],
+    revenueByEmployee: [],
+    dailyBreakdown: [],
+    incomes: [],
+    expenses: [],
+  });
 
   // Calculate default dates based on filter preset
   useEffect(() => {
@@ -84,6 +101,7 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
     if (filter === "custom" && (!dateFrom || !dateTo)) return;
 
     setLoading(true);
+    setError(null);
     try {
       const query = new URLSearchParams();
       if (dateFrom) query.append("date_from", dateFrom);
@@ -93,9 +111,23 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
       if (res.ok) {
         const data = await res.json();
         setReportData(data);
+        setError(null);
+      } else {
+        const text = await res.text();
+        let errMsg = "Failed to load dashboard report";
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.error) errMsg = parsed.error;
+        } catch {
+          if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+            errMsg = "Backend server unreachable. The /api route returned HTML instead of JSON. Please verify your backend server deployment.";
+          }
+        }
+        setError(errMsg);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load dashboard financials:", err);
+      setError(err?.message || "Failed to reach backend server. Check network connection.");
     } finally {
       setLoading(false);
     }
@@ -105,7 +137,7 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
     fetchReport();
   }, [dateFrom, dateTo, refreshCounter]);
 
-  if (loading || !reportData) {
+  if (loading && !reportData) {
     return (
       <div className="p-6 space-y-6" id="dashboard-skeleton">
         <div className="h-10 w-48 bg-slate-200 rounded-lg animate-pulse" />
@@ -185,6 +217,28 @@ export default function Dashboard({ user, onNavigate, refreshCounter }: Dashboar
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 shadow-sm" id="dashboard-backend-error-banner">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-amber-200/70 rounded-lg text-amber-900 font-bold text-xs uppercase tracking-wider shrink-0">
+              Note
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-amber-900">{error}</p>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                If running on Netlify, your Express server must be deployed on Render/Railway and connected.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchReport()}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shrink-0 transition-colors shadow-xs"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
 
       {/* Custom Date Picker Range */}
       {filter === "custom" && (

@@ -31,7 +31,15 @@ export default function Reports({ user }: ReportsProps) {
   const [filterServiceId, setFilterServiceId] = useState("");
 
   const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState<any>(null);
+  const [reportData, setReportData] = useState<any>({
+    summary: { totalIncome: 0, totalExpense: 0, netProfit: 0, totalTransactions: 0, avgTransactionValue: 0 },
+    revenueByCategory: [],
+    expensesByCategory: [],
+    revenueByEmployee: [],
+    dailyBreakdown: [],
+    incomes: [],
+    expenses: []
+  });
   
   const [employees, setEmployees] = useState<Profile[]>([]);
   const [services, setServices] = useState<ServiceCategory[]>([]);
@@ -164,7 +172,7 @@ export default function Reports({ user }: ReportsProps) {
     document.body.removeChild(link);
   };
 
-  if (loading || !reportData) {
+  if (loading && !reportData) {
     return (
       <div className="p-6 space-y-4" id="report-skeleton">
         <div className="h-8 w-40 bg-slate-200 rounded animate-pulse" />
@@ -174,7 +182,13 @@ export default function Reports({ user }: ReportsProps) {
     );
   }
 
-  const { summary, revenueByCategory, expensesByCategory, revenueByEmployee, dailyBreakdown } = reportData;
+  const {
+    summary = { totalIncome: 0, totalExpense: 0, netProfit: 0, totalTransactions: 0, avgTransactionValue: 0 },
+    revenueByCategory = [],
+    expensesByCategory = [],
+    revenueByEmployee = [],
+    dailyBreakdown = []
+  } = reportData || {};
 
   return (
     <div className="p-4 md:p-6 space-y-6" id="reports-module">

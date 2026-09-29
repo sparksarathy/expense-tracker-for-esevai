@@ -2,9 +2,11 @@
   command = "npm run build"
   publish = "dist"
 
+# IMPORTANT: If hosting the frontend on Netlify and backend on Render/Railway,
+# replace "https://expense-tracker-for-esevai.onrender.com/" with your real deployed backend service URL!
 [[redirects]]
   from = "/api/*"
-  to = "https://your-backend-api.onrender.com/api/:splat"
+  to = "https://expense-tracker-for-esevai.onrender.com/api/:splat"
   status = 200
   force = true
 
