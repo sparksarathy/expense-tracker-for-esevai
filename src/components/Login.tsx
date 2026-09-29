@@ -18,6 +18,7 @@ interface LoginProps {
 
 export type LoginMode = 
   | "password" 
+  | "signup"
   | "otp_request" 
   | "otp_verify" 
   | "google_verify" 
@@ -37,11 +38,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [googleVerifyName, setGoogleVerifyName] = useState("");
   const [googleOtpCode, setGoogleOtpCode] = useState("");
 
-  // Form Fields
+  // Sign In Form Fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Sign Up (Register Staff) Form Fields
+  const [registerName, setRegisterName] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   // OTP Fields
   const [otpCode, setOtpCode] = useState("");
@@ -258,7 +267,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         setCachedSession(data.user, data.token, true);
         onLoginSuccess(data.user);
       } else {
-        setInfoMsg("Still awaiting Admin approval. Center Admin (csb21090@gmail.com) can activate your desk in the Employee Access dashboard.");
+        setInfoMsg("Still awaiting administrator approval. Center administration will activate your counter access in the Employee Access dashboard.");
       }
     } catch (err: any) {
       setError(err?.message || "Failed to check status.");
@@ -268,7 +277,75 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   };
 
   // =========================================================================
-  // OPTION A: DIRECT EMAIL + PASSWORD / PIN LOGIN HANDLER
+  // SIGN-UP / STAFF REGISTRATION HANDLER
+  // =========================================================================
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = registerName.trim();
+    const cleanEmail = registerEmail.trim().toLowerCase();
+    const cleanPassword = registerPassword.trim();
+    const cleanConfirm = registerConfirmPassword.trim();
+    const cleanPhone = registerPhone.trim();
+
+    if (!cleanName) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!cleanEmail) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (cleanPassword.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+    if (cleanPassword !== cleanConfirm) {
+      setError("Passwords do not match. Please re-enter.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setInfoMsg(null);
+
+    try {
+      const res = await authFetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: cleanName,
+          email: cleanEmail,
+          password: cleanPassword,
+          phone_number: cleanPhone || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed.");
+      }
+
+      if (data.pendingApproval) {
+        setGoogleVerifyEmail(cleanEmail);
+        setGoogleVerifyName(cleanName);
+        setMode("google_pending_approval");
+        setPendingApprovalNotice(cleanEmail);
+        setInfoMsg(data.message);
+        return;
+      }
+
+      // Log in immediately
+      setCachedSession(data.user, data.token, true);
+      onLoginSuccess(data.user);
+    } catch (err: any) {
+      setError(err?.message || "Registration failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================================================================
+  // OPTION A: DIRECT EMAIL + PASSWORD LOGIN HANDLER
   // =========================================================================
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,7 +357,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       return;
     }
     if (!cleanPassword) {
-      setError("Please enter your password or 4-digit PIN.");
+      setError("Please enter your password.");
       return;
     }
 
@@ -309,15 +386,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       }
 
       if (!res.ok) {
-        if (data.notInvited) {
-          // Send access request automatically
-          await authFetch("/api/auth/google", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: cleanEmail, name: cleanEmail.split("@")[0] }),
-          }).catch(() => {});
+        if (data.pendingApproval) {
+          setGoogleVerifyEmail(cleanEmail);
+          setMode("google_pending_approval");
           setPendingApprovalNotice(cleanEmail);
-          setError(`Access Request Sent: Your email (${cleanEmail}) is not approved yet. An access request has been automatically sent to the Admin.`);
+          setInfoMsg(data.error);
           return;
         }
         throw new Error(data.error || "Authentication failed. Please check your credentials.");
@@ -485,118 +558,291 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           )}
 
           {/* ========================================================================= */}
-          {/* 1. PRIMARY GOOGLE SIGN-IN BUTTON */}
+          {/* TAB SWITCHER: SIGN IN vs SIGN UP */}
           {/* ========================================================================= */}
-          <div className="space-y-3 mb-5">
-            <button
-              type="button"
-              onClick={() => setShowGoogleModal(true)}
-              disabled={loading}
-              id="google-signin-btn"
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-sm border border-slate-300 shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
-            >
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              <span>Sign in with Google</span>
-            </button>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2.5 text-slate-400 font-semibold tracking-wider text-[11px]">
-                  or sign in with email
-                </span>
-              </div>
+          {(mode === "password" || mode === "signup") && (
+            <div className="flex bg-slate-100 p-1 rounded-xl mb-5 border border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => { setMode("password"); setError(null); setInfoMsg(null); }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  mode === "password"
+                    ? "bg-white text-blue-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setError(null); setInfoMsg(null); }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  mode === "signup"
+                    ? "bg-white text-blue-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Sign Up (New Staff)</span>
+              </button>
             </div>
-          </div>
+          )}
 
           {/* ========================================================================= */}
-          {/* 2. DIRECT EMAIL + PASSWORD / PIN LOGIN */}
+          {/* 1. SIGN IN WITH GOOGLE OR PASSWORD */}
           {/* ========================================================================= */}
           {mode === "password" && (
-            <form onSubmit={handlePasswordLogin} className="space-y-4" id="password-login-form">
-              <div>
-                <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>Registered Staff Email</span>
-                  <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Required</span>
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="login-email"
-                    type="email"
-                    required
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium text-slate-900 placeholder:text-slate-400"
-                    placeholder="Enter your email (e.g. staff@gmail.com)"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                  />
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(true)}
+                disabled={loading}
+                id="google-signin-btn"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-sm border border-slate-300 shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>Sign in with Google</span>
+              </button>
+
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2.5 text-slate-400 font-semibold tracking-wider text-[11px]">
+                    or sign in with password
+                  </span>
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="login-password" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>Password or PIN</span>
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium text-slate-900 placeholder:text-slate-400"
-                    placeholder="Enter your password or PIN"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
+              <form onSubmit={handlePasswordLogin} className="space-y-4" id="password-login-form">
+                <div>
+                  <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Registered Staff Email</span>
+                    <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Required</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      id="login-email"
+                      type="email"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                      placeholder="Enter your email (e.g. staff@gmail.com)"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="login-password" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Password</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      id="login-password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Remember Me Option */}
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-slate-600">
+                      Keep me signed in on this device
+                    </span>
+                  </label>
+                </div>
+
+                <button
+                  id="login-submit-btn"
+                  type="submit"
+                  disabled={loading || !email || !password}
+                  className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 bg-[#1e3a8a] hover:bg-blue-900 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>Log In to Desk</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="text-center pt-2 space-y-2">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    onClick={() => { setMode("otp_request"); setError(null); }}
+                    className="text-xs text-blue-700 hover:text-blue-900 font-semibold underline cursor-pointer block mx-auto"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Or log in with 6-digit Email Verification Code
                   </button>
+                  <p className="text-xs text-slate-500">
+                    New staff member?{" "}
+                    <button
+                      type="button"
+                      onClick={() => { setMode("signup"); setError(null); }}
+                      className="text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
+                    >
+                      Create your staff account
+                    </button>
+                  </p>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 2. SIGN UP / CREATE STAFF ACCOUNT */}
+          {/* ========================================================================= */}
+          {mode === "signup" && (
+            <form onSubmit={handleRegister} className="space-y-3.5" id="signup-form">
+              <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-blue-950">
+                  <UserPlus className="w-4 h-4 text-blue-700" />
+                  <span>New Staff Self-Registration</span>
+                </div>
+                <p className="text-blue-900/90 text-[11px] leading-relaxed">
+                  Create your own login password. Your employee data will be recorded in the database, and the Shop Owner will activate your counter access.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. M. Rajesh Kumar"
+                  value={registerName}
+                  onChange={(e) => setRegisterName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Staff Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="staff@gmail.com"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                    disabled={loading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="9876543210"
+                    value={registerPhone}
+                    onChange={(e) => setRegisterPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                    disabled={loading}
+                  />
                 </div>
               </div>
 
-              {/* Remember Me Option (Clean, no auto-restore wording) */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Create Password *</span>
+                    <span className="text-[10px] text-slate-400">Min 6 chars</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRegisterPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      placeholder="Choose password"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      className="w-full pl-3.5 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      {showRegisterPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Confirm Password *
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                    type={showRegisterPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    placeholder="Repeat password"
+                    value={registerConfirmPassword}
+                    onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900 placeholder:text-slate-400"
+                    disabled={loading}
                   />
-                  <span className="text-xs font-medium text-slate-600">
-                    Keep me signed in on this device
-                  </span>
-                </label>
+                </div>
               </div>
 
               <button
-                id="login-submit-btn"
                 type="submit"
-                disabled={loading || !email || !password}
-                className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 bg-[#1e3a8a] hover:bg-blue-900 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={loading || !registerName || !registerEmail || !registerPassword || !registerConfirmPassword}
+                className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 bg-[#1e3a8a] hover:bg-blue-900 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Signing in...</span>
+                    <span>Creating Account...</span>
                   </>
                 ) : (
                   <>
-                    <LogIn className="w-4 h-4" />
-                    <span>Log In to Desk</span>
+                    <UserPlus className="w-4 h-4" />
+                    <span>Create Staff Account</span>
                   </>
                 )}
               </button>
@@ -604,10 +850,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => { setMode("otp_request"); setError(null); }}
-                  className="text-xs text-blue-700 hover:text-blue-900 font-semibold underline cursor-pointer"
+                  onClick={() => { setMode("password"); setError(null); }}
+                  className="text-xs text-slate-500 hover:text-slate-800 font-semibold underline cursor-pointer"
                 >
-                  Or log in with 6-digit Email Verification Code (OTP)
+                  Already have an account? Sign In here
                 </button>
               </div>
             </form>
@@ -900,10 +1146,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               <div>
                 <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-100 text-emerald-800 font-bold px-3 py-0.5 rounded-full mb-1.5">
                   <Check className="w-3 h-3" />
-                  <span>Email Verified & Data Saved</span>
+                  <span>Account Registered & Data Saved</span>
                 </span>
                 <h3 className="text-base font-bold text-slate-900">
-                  Awaiting Admin Desk Activation
+                  Awaiting Administrator Approval
                 </h3>
                 <p className="text-xs text-slate-500 font-mono mt-0.5">
                   {googleVerifyEmail}
@@ -912,21 +1158,24 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-left space-y-2 text-xs">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Employee Name:</span>
+                  <span className="text-slate-500 font-medium">Staff Member:</span>
                   <span className="font-bold text-slate-800">{googleVerifyName || googleVerifyEmail.split("@")[0]}</span>
                 </div>
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Database Status:</span>
+                  <span className="text-slate-500 font-medium">Registration Status:</span>
                   <span className="font-semibold text-emerald-700">Profile Recorded ✓</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Approving Admin:</span>
-                  <span className="font-mono text-[11px] text-blue-700 font-bold">csb21090@gmail.com</span>
+                  <span className="text-slate-500 font-medium">Access Status:</span>
+                  <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">
+                    <Clock className="w-3 h-3 text-amber-600" />
+                    <span>Pending Admin Activation</span>
+                  </span>
                 </div>
               </div>
 
               <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] text-blue-800 leading-relaxed">
-                Your account is safely stored. Once the Center Admin approves your access in <strong>Employee Management</strong>, this screen will automatically admit you.
+                Your staff profile is recorded in the system. As soon as center administration activates your account, this screen will automatically sign you in.
               </div>
 
               <div className="pt-2 space-y-2.5">
@@ -995,30 +1244,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </button>
             </div>
 
-            {/* Quick 1-Click for Master Admin */}
-            <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl space-y-2">
-              <span className="text-[10px] text-blue-900 font-bold uppercase tracking-wider block">Center Administrator:</span>
-              <button
-                type="button"
-                onClick={() => handleGoogleSignIn("csb21090@gmail.com", "Center Admin")}
-                disabled={loading}
-                className="w-full py-2 px-3 bg-white hover:bg-blue-100/50 text-blue-900 border border-blue-200 rounded-lg text-xs font-bold flex items-center justify-between cursor-pointer transition-colors shadow-2xs"
-              >
-                <span className="font-mono text-[11px]">csb21090@gmail.com</span>
-                <span className="text-[10px] bg-blue-700 text-white font-semibold px-2 py-0.5 rounded">Owner Access</span>
-              </button>
-            </div>
-
-            <div className="relative my-2">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-slate-400 font-semibold text-[10px]">
-                  or employee google email
-                </span>
-              </div>
-            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Enter your Google account (@gmail.com) to access <strong>SS E-SEVAI MAIYAM</strong>:
+            </p>
 
             <form
               onSubmit={(e) => {

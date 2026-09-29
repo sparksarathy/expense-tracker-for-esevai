@@ -102,9 +102,10 @@ export default function Settings({ user }: SettingsProps) {
     setDangerError(null);
     setResetSuccess(false);
 
-    // Verify logged in user is the primary admin csb21090@gmail.com
-    if (user.email.toLowerCase() !== "csb21090@gmail.com") {
-      setDangerError("Access Denied: Data formatting/reset is strictly restricted to the primary administrator email (csb21090@gmail.com) only.");
+    // Verify logged in user is a master admin
+    const isMaster = ["csb21090@gmail.com", "ssesevai@gmail.com"].includes(user.email.toLowerCase());
+    if (!isMaster) {
+      setDangerError("Access Denied: Data formatting/reset is strictly restricted to primary shop owners (csb21090@gmail.com / ssesevai@gmail.com) only.");
       return;
     }
 
@@ -332,14 +333,14 @@ export default function Settings({ user }: SettingsProps) {
             </p>
           </div>
 
-          {user.email.toLowerCase() !== "csb21090@gmail.com" ? (
+          {!["csb21090@gmail.com", "ssesevai@gmail.com"].includes(user.email.toLowerCase()) ? (
             <div className="p-3.5 bg-amber-50 border border-amber-100 text-amber-900 rounded-xl space-y-2">
               <div className="flex items-center gap-1.5 font-bold">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>RESTRICTED ACCESS WARNING</span>
               </div>
               <p className="text-[10.5px] leading-relaxed font-medium">
-                System formatting (destructive system reset) is locked. Under security operating guidelines, only the primary administrator account (<strong className="font-bold">csb21090@gmail.com</strong>) has formatting authority.
+                System formatting (destructive system reset) is locked. Under security operating guidelines, only the primary shop owner accounts (<strong className="font-bold">csb21090@gmail.com</strong> / <strong className="font-bold">ssesevai@gmail.com</strong>) have formatting authority.
               </p>
             </div>
           ) : (
@@ -380,7 +381,7 @@ export default function Settings({ user }: SettingsProps) {
                 placeholder={user.email}
                 value={reauthEmail}
                 onChange={(e) => setReauthEmail(e.target.value)}
-                disabled={resetting || user.email.toLowerCase() !== "csb21090@gmail.com"}
+                disabled={resetting || !["csb21090@gmail.com", "ssesevai@gmail.com"].includes(user.email.toLowerCase())}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-600 text-slate-800 disabled:opacity-50"
               />
             </div>
@@ -396,7 +397,7 @@ export default function Settings({ user }: SettingsProps) {
                 placeholder="RESET ALL RECORDS"
                 value={confirmPhrase}
                 onChange={(e) => setConfirmPhrase(e.target.value)}
-                disabled={resetting || user.email.toLowerCase() !== "csb21090@gmail.com"}
+                disabled={resetting || !["csb21090@gmail.com", "ssesevai@gmail.com"].includes(user.email.toLowerCase())}
                 className="w-full px-3 py-2 border border-red-100 bg-red-50/10 rounded-xl font-mono text-center tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50"
               />
             </div>
@@ -404,7 +405,7 @@ export default function Settings({ user }: SettingsProps) {
             {/* Truncate Reset Button */}
             <button
               type="submit"
-              disabled={resetting || user.email.toLowerCase() !== "csb21090@gmail.com" || reauthEmail.trim().toLowerCase() !== user.email.toLowerCase() || confirmPhrase.trim() !== "RESET ALL RECORDS"}
+              disabled={resetting || !["csb21090@gmail.com", "ssesevai@gmail.com"].includes(user.email.toLowerCase()) || reauthEmail.trim().toLowerCase() !== user.email.toLowerCase() || confirmPhrase.trim() !== "RESET ALL RECORDS"}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs shadow hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {resetting ? (

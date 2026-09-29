@@ -86,6 +86,16 @@ interface OtpRecord {
 }
 const otpStore = new Map<string, OtpRecord>();
 
+// =========================================================================
+// MASTER ADMINISTRATORS / SHOP OWNERS
+// =========================================================================
+export const MASTER_ADMIN_EMAILS = ["csb21090@gmail.com", "ssesevai@gmail.com"];
+
+export function isMasterAdmin(email?: string): boolean {
+  if (!email || typeof email !== "string") return false;
+  return MASTER_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
+
 // Helper: Check if an email is authorized to log in
 function isEmailAuthorized(email: string): {
   authorized: boolean;
@@ -96,9 +106,14 @@ function isEmailAuthorized(email: string): {
 } {
   const normalized = email.trim().toLowerCase();
   
-  // Master Admin is permanently authorized and immune to locks
-  if (normalized === "csb21090@gmail.com") {
-    return { authorized: true, role: "owner", name: "Spark (Admin)", source: "profile" };
+  // Master Admins are permanently authorized and immune to locks
+  if (isMasterAdmin(normalized)) {
+    return {
+      authorized: true,
+      role: "owner",
+      name: normalized === "csb21090@gmail.com" ? "Spark (Admin)" : "SS E-Sevai (Admin)",
+      source: "profile"
+    };
   }
 
   // 1. Check existing active profile
@@ -132,7 +147,118 @@ app.get("/api/auth/me", (req, res) => {
 });
 
 // =========================================================================
-// OPTION A: DIRECT EMAIL + PASSWORD / PIN LOGIN
+// STAFF & ADMIN REGISTRATION (SIGN-UP WITH CUSTOM PASSWORD)
+// =========================================================================
+app.post("/api/auth/register", (req, res) => {
+  const { full_name, email, password, phone_number } = req.body;
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Email address is required." });
+  }
+  if (!password || typeof password !== "string" || password.trim().length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long." });
+  }
+
+  const normalized = email.trim().toLowerCase();
+  const trimmedPass = password.trim();
+  const isMaster = isMasterAdmin(normalized);
+
+  // STRICT DUPLICATE EMAIL CHECK: Check profiles, approved_users, and pending requests
+  const existingProfile = db.getProfileByEmail(normalized);
+  const existingApproved = db.getApprovedUserByEmail(normalized);
+  const existingRequest = db.getGoogleRequests().find((r) => r.email.toLowerCase() === normalized);
+
+  if (existingProfile || existingApproved || existingRequest) {
+    return res.status(400).json({
+      error: `The email "${normalized}" is already registered in the system. Duplicate accounts are not allowed. Please sign in with your password.`,
+      exists: true,
+    });
+  }
+
+  const org = db.getOrganizations()[0];
+  const branch = db.getBranches()[0];
+  const invitation = db.getInvitationByEmail(normalized);
+
+  const roleToUse = isMaster ? "owner" : (invitation?.role || "employee");
+  const isActive = isMaster;
+
+  const profile = db.createProfile({
+    id: isMaster
+      ? (normalized === "csb21090@gmail.com" ? "admin-user-id-mock-uuid-key" : "admin-user-ssesevai-id")
+      : ("user-id-" + Math.random().toString(36).substring(2, 11)),
+    organization_id: (invitation && invitation.organization_id) || org.id,
+    branch_id: (invitation && invitation.branch_id) || branch.id,
+    full_name: full_name ? full_name.trim() : normalized.split("@")[0].replace(/[._-]/g, " "),
+    email: normalized,
+    role: roleToUse,
+    password: trimmedPass,
+    phone_number: phone_number ? phone_number.trim() : invitation?.phone_number,
+    desk_name: isMaster ? "Main Admin Desk" : "Service Counter",
+    is_active: isActive,
+    email_verified: isMaster ? true : false,
+    joining_date: new Date().toISOString().split("T")[0],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+
+  if (invitation) {
+    db.updateInvitation(invitation.id, {
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+    });
+  }
+
+  // Record in audit log
+  db.addAuditLog({
+    organization_id: profile.organization_id,
+    user_id: profile.id,
+    action: "CREATE",
+    entity_type: "profiles",
+    entity_id: profile.id,
+    new_values: JSON.stringify({
+      email: profile.email,
+      method: "SELF_REGISTRATION",
+      role: profile.role,
+      is_active: profile.is_active,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  // If not master admin, register in access requests table for Admin approval
+  if (!isMaster) {
+    db.addGoogleRequest({
+      email: normalized,
+      name: profile.full_name,
+      email_verified: false,
+    });
+
+    return res.json({
+      success: true,
+      pendingApproval: true,
+      email: normalized,
+      name: profile.full_name,
+      message: `Account created successfully! Your staff profile has been registered. Please wait for administrator approval to activate your counter access.`,
+    });
+  }
+
+  // If master, log in immediately!
+  res.cookie("auth_session_id", profile.id, {
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: "/",
+    sameSite: "none",
+    secure: true,
+  });
+
+  return res.json({
+    success: true,
+    user: profile,
+    token: profile.id,
+    message: "Registration successful! Welcome to SS E-SEVAI MAIYAM.",
+  });
+});
+
+// =========================================================================
+// OPTION A: DIRECT EMAIL + PASSWORD LOGIN
 // =========================================================================
 app.post("/api/auth/login", (req, res) => {
   const { email, password, rememberMe } = req.body;
@@ -140,43 +266,47 @@ app.post("/api/auth/login", (req, res) => {
     return res.status(400).json({ error: "Email address is required." });
   }
   if (!password || typeof password !== "string") {
-    return res.status(400).json({ error: "Password or 4-digit PIN is required." });
+    return res.status(400).json({ error: "Password is required." });
   }
 
   const normalized = email.trim().toLowerCase();
   const trimmedPass = password.trim();
 
-  // 1. Check existing active profile
+  // 1. Check existing profile
   let profile = db.getProfileByEmail(normalized);
 
-  // If no profile yet, check approved users or invitations
+  // If no profile yet
   if (!profile) {
     const approved = db.getApprovedUserByEmail(normalized);
     const invitation = db.getInvitationByEmail(normalized);
-    if (!approved && (!invitation || invitation.status !== "pending")) {
-      return res.status(403).json({
-        error: `Email "${normalized}" has not been registered or invited by the Center Admin.`,
-        notInvited: true,
+    const isMaster = isMasterAdmin(normalized);
+
+    if (!isMaster && !approved && (!invitation || invitation.status !== "pending")) {
+      return res.status(404).json({
+        error: `Account with email "${normalized}" was not found. Please click "Sign Up" to register your staff account.`,
+        notFound: true,
       });
     }
 
     const org = db.getOrganizations()[0];
     const branch = db.getBranches()[0];
-    const roleToUse = approved?.role || invitation?.role || "employee";
+    const roleToUse = isMaster ? "owner" : (approved?.role || invitation?.role || "employee");
     const nameToUse = invitation?.full_name || normalized.split("@")[0].replace(/[._-]/g, " ");
 
     profile = db.createProfile({
-      id: "user-id-" + Math.random().toString(36).substring(2, 11),
+      id: isMaster
+        ? (normalized === "csb21090@gmail.com" ? "admin-user-id-mock-uuid-key" : "admin-user-ssesevai-id")
+        : ("user-id-" + Math.random().toString(36).substring(2, 11)),
       organization_id: (approved && approved.organization_id) || (invitation && invitation.organization_id) || org.id,
       branch_id: (approved && approved.branch_id) || (invitation && invitation.branch_id) || branch.id,
       full_name: nameToUse,
       email: normalized,
       role: roleToUse,
       password: trimmedPass, // Store chosen initial password
-      desk_name: invitation?.desk_name,
+      desk_name: invitation?.desk_name || (isMaster ? "Main Admin Desk" : "Service Desk"),
       phone_number: invitation?.phone_number,
       notes: invitation?.notes,
-      is_active: true,
+      is_active: isMaster ? true : (approved?.is_active ?? false),
       joining_date: new Date().toISOString().split("T")[0],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -189,33 +319,35 @@ app.post("/api/auth/login", (req, res) => {
       });
     }
   } else {
-    // Ensure master admin account is never deactivated or locked
-    if (!profile.is_active) {
-      if (profile.email.toLowerCase() === "csb21090@gmail.com" || profile.role === "owner") {
-        db.updateProfile(profile.id, { is_active: true });
-        profile.is_active = true;
-      } else {
-        return res.status(403).json({ error: "Access denied. Your employee account has been deactivated." });
-      }
+    // Ensure master admin accounts are never deactivated or locked
+    if (!profile.is_active && isMasterAdmin(profile.email)) {
+      db.updateProfile(profile.id, { is_active: true });
+      profile.is_active = true;
     }
 
     // Verify Password:
-    // If profile does not have a password set yet, save this password as their set password!
-    if (!profile.password && !profile.pin) {
+    if (!profile.password) {
       db.updateProfile(profile.id, { password: trimmedPass });
       profile.password = trimmedPass;
     } else {
-      // Validate matching password
       const match =
-        (profile.password && profile.password === trimmedPass) ||
-        (profile.pin && profile.pin === trimmedPass) ||
+        profile.password === trimmedPass ||
         (profile.role === "owner" && (trimmedPass === "admin123" || trimmedPass === "admin"));
 
       if (!match) {
         return res.status(401).json({
-          error: "The password entered does not match. Please enter the correct matching password.",
+          error: "Incorrect password. Please enter the correct password.",
         });
       }
+    }
+
+    // Check activation
+    if (!profile.is_active) {
+      return res.status(403).json({
+        error: "Your account is awaiting administrator approval. Your counter access has not been activated yet.",
+        pendingApproval: true,
+        email: normalized,
+      });
     }
   }
 
@@ -282,23 +414,23 @@ app.post("/api/auth/google", (req, res) => {
 
   const normalized = email.trim().toLowerCase();
 
-  // 1. Is it the primary center admin / owner?
-  const isCenterOwner = normalized === "csb21090@gmail.com";
+  // 1. Is it a primary center admin / owner?
+  const isCenterOwner = isMasterAdmin(normalized);
 
   let profile = db.getProfileByEmail(normalized);
   const approvedUser = db.getApprovedUserByEmail(normalized);
   const invitation = db.getInvitationByEmail(normalized);
 
-  // If master admin csb21090@gmail.com:
+  // If master admin (csb21090@gmail.com or ssesevai@gmail.com):
   if (isCenterOwner) {
     if (!profile) {
       const org = db.getOrganizations()[0];
       const branch = db.getBranches()[0];
       profile = db.createProfile({
-        id: "admin-user-id-mock-uuid-key",
+        id: normalized === "csb21090@gmail.com" ? "admin-user-id-mock-uuid-key" : "admin-user-ssesevai-id",
         organization_id: org.id,
         branch_id: branch.id,
-        full_name: name || "Center Admin",
+        full_name: name || (normalized === "csb21090@gmail.com" ? "Spark (Owner)" : "SS E-Sevai (Owner)"),
         email: normalized,
         role: "owner",
         google_id: google_id || undefined,
@@ -328,7 +460,7 @@ app.post("/api/auth/google", (req, res) => {
       success: true,
       user: profile,
       token: profile.id,
-      message: "Admin login successful via Google.",
+      message: "Shop Owner login successful via Google.",
     });
   }
 
@@ -456,14 +588,14 @@ app.post("/api/auth/google", (req, res) => {
       });
     }
 
-    // Otherwise, waiting for Admin csb21090@gmail.com approval
+    // Otherwise, waiting for Administrator approval
     return res.json({
       success: true,
       emailVerified: true,
       pendingApproval: true,
       email: normalized,
       name: nameToUse,
-      message: `Your Google email (${normalized}) has been verified and your profile data is saved in the database. Please wait for the Center Admin (csb21090@gmail.com) to approve your desk access.`,
+      message: `Your Google email (${normalized}) has been verified and your profile data is registered in the database. Please wait for administrator approval to activate your counter access.`,
     });
   }
 
@@ -671,8 +803,8 @@ app.put("/api/admin/approved-users/:email/toggle", requireOwner, (req, res) => {
   const { email } = req.params;
   const normalized = email.trim().toLowerCase();
 
-  if (normalized === "csb21090@gmail.com") {
-    return res.status(400).json({ error: "The primary administrator account (csb21090@gmail.com) cannot be deactivated." });
+  if (isMasterAdmin(normalized)) {
+    return res.status(400).json({ error: "The primary shop owner accounts cannot be deactivated." });
   }
 
   const approved = db.getApprovedUserByEmail(normalized);
@@ -696,8 +828,8 @@ app.delete("/api/admin/approved-users/:email", requireOwner, (req, res) => {
   const { email } = req.params;
   const normalized = email.trim().toLowerCase();
 
-  if (normalized === "csb21090@gmail.com") {
-    return res.status(400).json({ error: "The primary administrator account (csb21090@gmail.com) cannot be deleted." });
+  if (isMasterAdmin(normalized)) {
+    return res.status(400).json({ error: "The primary shop owner accounts cannot be deleted." });
   }
 
   db.deleteApprovedUser(normalized);
@@ -2280,9 +2412,9 @@ app.post("/api/settings/reset-data", requireOwner, (req, res) => {
     const { confirmation, reauth_email } = req.body;
     const currentUser = (req as any).user;
 
-    // Check if the current user's email is exactly csb21090@gmail.com (the main admin email)
-    if (currentUser.email.toLowerCase() !== "csb21090@gmail.com") {
-      return res.status(403).json({ error: "Access Denied. Database formatting/reset is strictly restricted to the primary administrator email (csb21090@gmail.com) only." });
+    // Check if the current user is a master admin
+    if (!isMasterAdmin(currentUser.email)) {
+      return res.status(403).json({ error: "Access Denied. Database formatting/reset is strictly restricted to primary shop owners (csb21090@gmail.com / ssesevai@gmail.com) only." });
     }
 
     // 1. Re-authentication verification

@@ -35,13 +35,14 @@
       "is_active": true,
       "joining_date": "2024-10-01",
       "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-09-29T10:03:56.373Z",
+      "updated_at": "2026-09-29T11:24:15.450Z",
       "desk_name": "Main Admin Desk",
       "phone_number": "+91 9876543210",
       "notes": "Primary Center Administrator & Owner",
       "avatar_url": "https://ui-avatars.com/api/?name=csb21090%40gmail.com&background=1e3a8a&color=fff",
       "avatar_updated_at": null,
-      "google_id": "g-880uzanm"
+      "google_id": "g-880uzanm",
+      "password": "123456"
     },
     {
       "id": "user-id-334utn537",
@@ -56,6 +57,96 @@
       "joining_date": "2026-09-29",
       "created_at": "2026-09-29T10:33:03.999Z",
       "updated_at": "2026-09-29T10:33:31.787Z"
+    },
+    {
+      "id": "admin-user-ssesevai-id",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "SS E-Sevai (Owner)",
+      "email": "ssesevai@gmail.com",
+      "role": "owner",
+      "is_active": true,
+      "joining_date": "2024-10-01",
+      "created_at": "2026-09-29T11:15:41.355Z",
+      "updated_at": "2026-09-29T11:20:53.710Z",
+      "password": "admin"
+    },
+    {
+      "id": "user-id-cujh3389g",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "M. Murugan",
+      "email": "murugan.staff@gmail.com",
+      "role": "employee",
+      "password": "MySecretPass2026",
+      "phone_number": "9840112233",
+      "desk_name": "Counter 1",
+      "is_active": true,
+      "email_verified": false,
+      "joining_date": "2026-09-29",
+      "created_at": "2026-09-29T11:21:01.393Z",
+      "updated_at": "2026-09-29T11:21:24.214Z"
+    },
+    {
+      "id": "user-id-trjana5wp",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "test",
+      "email": "123@gmail.com",
+      "role": "employee",
+      "password": "123456",
+      "phone_number": "22521",
+      "desk_name": "Service Counter",
+      "is_active": true,
+      "email_verified": false,
+      "joining_date": "2026-09-29",
+      "created_at": "2026-09-29T11:23:42.302Z",
+      "updated_at": "2026-09-29T11:24:34.584Z"
+    },
+    {
+      "id": "user-id-gen80svws",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "spark",
+      "email": "spark@gmail.com",
+      "role": "employee",
+      "desk_name": "Service Counter",
+      "is_active": true,
+      "joining_date": "2026-09-29",
+      "created_at": "2026-09-29T11:24:36.710Z",
+      "updated_at": "2026-09-29T11:24:36.710Z"
+    },
+    {
+      "id": "user-id-ehdbpqm49",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "ssesvai",
+      "email": "ssesvai@gmail.com",
+      "role": "employee",
+      "google_id": "g-vukd7yfn",
+      "avatar_url": "https://ui-avatars.com/api/?name=ssesvai%40gmail.com&background=1e3a8a&color=fff",
+      "desk_name": "Service Desk",
+      "is_active": false,
+      "email_verified": true,
+      "joining_date": "2026-09-29",
+      "created_at": "2026-09-29T11:26:02.283Z",
+      "updated_at": "2026-09-29T11:26:11.718Z"
+    },
+    {
+      "id": "user-id-s8s5gp8h8",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "Kavitha S",
+      "email": "kavitha.staff@gmail.com",
+      "role": "employee",
+      "password": "KavithaPassword2026",
+      "phone_number": "9811223344",
+      "desk_name": "Counter 2",
+      "is_active": true,
+      "email_verified": false,
+      "joining_date": "2026-09-29",
+      "created_at": "2026-09-29T11:44:21.931Z",
+      "updated_at": "2026-09-29T11:44:39.799Z"
     }
   ],
   "approved_users": [
@@ -80,6 +171,66 @@
       "id": "72ed86c0-ccdf-4ed3-944b-d6a1d58d7366",
       "created_at": "2026-09-29T10:33:31.786Z",
       "updated_at": "2026-09-29T10:33:31.786Z"
+    },
+    {
+      "id": "owner-ssesevai-approved-id",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "email": "ssesevai@gmail.com",
+      "role": "owner",
+      "is_active": true,
+      "created_at": "2026-09-29T11:15:41.355Z",
+      "updated_at": "2026-09-29T11:15:41.355Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "email": "murugan.staff@gmail.com",
+      "desk_name": "Counter 1",
+      "role": "employee",
+      "is_active": true,
+      "invited_by": "admin-user-ssesevai-id",
+      "id": "f69bdc98-4125-40b2-acf6-0c688c66d8f3",
+      "created_at": "2026-09-29T11:21:24.214Z",
+      "updated_at": "2026-09-29T11:21:24.214Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "email": "123@gmail.com",
+      "full_name": "test",
+      "desk_name": "Service Counter",
+      "role": "employee",
+      "is_active": true,
+      "invited_by": "admin-user-id-mock-uuid-key",
+      "id": "3883698a-3c91-4255-95f2-60139f022f52",
+      "created_at": "2026-09-29T11:24:34.583Z",
+      "updated_at": "2026-09-29T11:24:34.583Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "email": "spark@gmail.com",
+      "full_name": "spark",
+      "desk_name": "Service Counter",
+      "role": "employee",
+      "is_active": true,
+      "invited_by": "admin-user-id-mock-uuid-key",
+      "id": "a70d7815-9471-4744-abd7-2744cb0035f3",
+      "created_at": "2026-09-29T11:24:36.709Z",
+      "updated_at": "2026-09-29T11:24:36.709Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "email": "kavitha.staff@gmail.com",
+      "desk_name": "Counter 2",
+      "role": "employee",
+      "is_active": true,
+      "invited_by": "admin-user-id-mock-uuid-key",
+      "id": "a820cec4-c00b-4715-aca8-9023bd3e2521",
+      "created_at": "2026-09-29T11:44:39.798Z",
+      "updated_at": "2026-09-29T11:44:39.798Z"
     }
   ],
   "service_categories": [
@@ -415,6 +566,113 @@
       "entity_id": "admin-user-id-mock-uuid-key",
       "id": "11d95777-e74e-4b8c-9d9a-3e05394b939d",
       "created_at": "2026-09-29T10:04:08.621Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-ssesevai-id",
+      "action": "LOGIN",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-ssesevai-id",
+      "new_values": "{\"email\":\"ssesevai@gmail.com\",\"method\":\"EMAIL_PASSWORD\",\"timestamp\":\"2026-09-29T11:20:53.710Z\"}",
+      "id": "ce1d32e7-4862-4b68-8aca-90118a662c1a",
+      "created_at": "2026-09-29T11:20:53.711Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "user-id-cujh3389g",
+      "action": "CREATE",
+      "entity_type": "profiles",
+      "entity_id": "user-id-cujh3389g",
+      "new_values": "{\"email\":\"murugan.staff@gmail.com\",\"method\":\"SELF_REGISTRATION\",\"role\":\"employee\",\"is_active\":false,\"timestamp\":\"2026-09-29T11:21:01.394Z\"}",
+      "id": "6fd2c955-55af-4af8-aeaa-e5148c72bc5b",
+      "created_at": "2026-09-29T11:21:01.394Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "user-id-trjana5wp",
+      "action": "CREATE",
+      "entity_type": "profiles",
+      "entity_id": "user-id-trjana5wp",
+      "new_values": "{\"email\":\"123@gmail.com\",\"method\":\"SELF_REGISTRATION\",\"role\":\"employee\",\"is_active\":false,\"timestamp\":\"2026-09-29T11:23:42.302Z\"}",
+      "id": "d6e2d69a-f16c-4684-9a98-1af3702c61b0",
+      "created_at": "2026-09-29T11:23:42.302Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGIN",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "new_values": "{\"email\":\"csb21090@gmail.com\",\"method\":\"EMAIL_PASSWORD\",\"timestamp\":\"2026-09-29T11:24:15.450Z\"}",
+      "id": "b39af3ec-295b-4837-bbcd-3eddb85269a6",
+      "created_at": "2026-09-29T11:24:15.450Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "APPROVE_GOOGLE_ID",
+      "entity_type": "approved_users",
+      "entity_id": "3883698a-3c91-4255-95f2-60139f022f52",
+      "new_values": "{\"approved_email\":\"123@gmail.com\",\"role\":\"employee\",\"desk_name\":\"Service Counter\",\"approved_by\":\"csb21090@gmail.com\",\"timestamp\":\"2026-09-29T11:24:34.584Z\"}",
+      "id": "c1c1ce7b-531c-4229-8adb-5ba048d9711f",
+      "created_at": "2026-09-29T11:24:34.584Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "APPROVE_GOOGLE_ID",
+      "entity_type": "approved_users",
+      "entity_id": "a70d7815-9471-4744-abd7-2744cb0035f3",
+      "new_values": "{\"approved_email\":\"spark@gmail.com\",\"role\":\"employee\",\"desk_name\":\"Service Counter\",\"approved_by\":\"csb21090@gmail.com\",\"timestamp\":\"2026-09-29T11:24:36.710Z\"}",
+      "id": "48c43c89-3d17-48bf-a87c-ed5fbd653066",
+      "created_at": "2026-09-29T11:24:36.710Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGOUT",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "id": "13c4007b-cb96-458c-a94e-bedfa7c2c637",
+      "created_at": "2026-09-29T11:24:48.155Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "user-id-trjana5wp",
+      "action": "LOGIN",
+      "entity_type": "profiles",
+      "entity_id": "user-id-trjana5wp",
+      "new_values": "{\"email\":\"123@gmail.com\",\"method\":\"EMAIL_PASSWORD\",\"timestamp\":\"2026-09-29T11:25:14.161Z\"}",
+      "id": "a0fa6ac2-6345-4b46-8d9e-963b2ec7a077",
+      "created_at": "2026-09-29T11:25:14.161Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "user-id-trjana5wp",
+      "action": "LOGOUT",
+      "entity_type": "profiles",
+      "entity_id": "user-id-trjana5wp",
+      "id": "0bee62ea-2c37-4e89-8034-2396b6acc28d",
+      "created_at": "2026-09-29T11:25:26.200Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGOUT",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "id": "e03f6eca-60e4-4507-8104-b2df4c0ef152",
+      "created_at": "2026-09-29T11:25:38.967Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "user-id-s8s5gp8h8",
+      "action": "CREATE",
+      "entity_type": "profiles",
+      "entity_id": "user-id-s8s5gp8h8",
+      "new_values": "{\"email\":\"kavitha.staff@gmail.com\",\"method\":\"SELF_REGISTRATION\",\"role\":\"employee\",\"is_active\":false,\"timestamp\":\"2026-09-29T11:44:21.932Z\"}",
+      "id": "6c58d15c-1320-405c-ab38-e6a43e58884f",
+      "created_at": "2026-09-29T11:44:21.932Z"
     }
   ],
   "app_settings": [
@@ -438,7 +696,7 @@
       "avatar_url": "https://ui-avatars.com/api/?name=spark%40gmail.com&background=1e3a8a&color=fff",
       "google_id": "g-1sgkesq1",
       "requested_at": "2026-09-29T10:06:12.268Z",
-      "status": "pending"
+      "status": "approved"
     },
     {
       "id": "req-50b49fdd-bfd3-49dd-8bb8-68cce5614b7c",
@@ -448,6 +706,41 @@
       "status": "approved",
       "email_verified": true,
       "verified_at": "2026-09-29T10:33:10.819Z"
+    },
+    {
+      "id": "req-cc0e207c-b32b-4981-8e9d-1317e236144a",
+      "email": "murugan.staff@gmail.com",
+      "name": "M. Murugan",
+      "requested_at": "2026-09-29T11:21:01.394Z",
+      "status": "approved",
+      "email_verified": false
+    },
+    {
+      "id": "req-ee6941cb-5cd1-42e0-95bc-576f60a47d99",
+      "email": "123@gmail.com",
+      "name": "test",
+      "requested_at": "2026-09-29T11:23:42.303Z",
+      "status": "approved",
+      "email_verified": false
+    },
+    {
+      "id": "req-0ec23e6e-4578-4053-847d-a88cac7ad892",
+      "email": "ssesvai@gmail.com",
+      "name": "ssesvai",
+      "avatar_url": "https://ui-avatars.com/api/?name=ssesvai%40gmail.com&background=1e3a8a&color=fff",
+      "google_id": "g-vukd7yfn",
+      "requested_at": "2026-09-29T11:26:11.718Z",
+      "status": "pending",
+      "email_verified": true,
+      "verified_at": "2026-09-29T11:26:11.719Z"
+    },
+    {
+      "id": "req-3e2c1082-10f4-4b29-9f9b-8f46da41c9e2",
+      "email": "kavitha.staff@gmail.com",
+      "name": "Kavitha S",
+      "requested_at": "2026-09-29T11:44:21.932Z",
+      "status": "approved",
+      "email_verified": false
     }
   ]
 }

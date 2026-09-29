@@ -91,9 +91,19 @@ function getInitialData(): DatabaseSchema {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
+    {
+      id: generateUUID(),
+      organization_id: orgId,
+      branch_id: branchId,
+      email: "ssesevai@gmail.com",
+      role: "owner",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
   ];
 
-  // Pre-seed owner profile for administrator access
+  // Pre-seed owner profiles for administrator access
   const profiles: Profile[] = [
     {
       id: "admin-user-id-mock-uuid-key",
@@ -101,6 +111,18 @@ function getInitialData(): DatabaseSchema {
       branch_id: branchId,
       full_name: "Spark (Owner)",
       email: "csb21090@gmail.com",
+      role: "owner",
+      is_active: true,
+      joining_date: "2024-10-01",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: "admin-user-ssesevai-id",
+      organization_id: orgId,
+      branch_id: branchId,
+      full_name: "SS E-Sevai (Owner)",
+      email: "ssesevai@gmail.com",
       role: "owner",
       is_active: true,
       joining_date: "2024-10-01",
