@@ -18,7 +18,8 @@ import {
   AppSettings,
   UserRole,
   ServiceRateHistory,
-  EmployeeInvitation
+  EmployeeInvitation,
+  GoogleAccessRequest
 } from "../types";
 
 const DB_FILE_PATH = path.join(process.cwd(), "data", "db.json");
@@ -36,6 +37,7 @@ interface DatabaseSchema {
   app_settings: AppSettings[];
   service_rate_history?: ServiceRateHistory[];
   invitations?: EmployeeInvitation[];
+  google_requests?: GoogleAccessRequest[];
 }
 
 let dbCache: DatabaseSchema | null = null;
@@ -207,6 +209,9 @@ function readDb(): DatabaseSchema {
       dbCache = JSON.parse(data);
       if (!dbCache!.invitations) {
         dbCache!.invitations = [];
+      }
+      if (!dbCache!.google_requests) {
+        dbCache!.google_requests = [];
       }
       return dbCache!;
     }
@@ -390,6 +395,60 @@ export const db = {
   deleteApprovedUser: (email: string) => {
     const database = readDb();
     database.approved_users = database.approved_users.filter((u) => u.email.toLowerCase() !== email.toLowerCase());
+    writeDb(database);
+  },
+
+  // Google Access Requests
+  getGoogleRequests: (): GoogleAccessRequest[] => {
+    const database = readDb();
+    if (!database.google_requests) database.google_requests = [];
+    return database.google_requests;
+  },
+
+  addGoogleRequest: (req: { email: string; name: string; avatar_url?: string; google_id?: string }): GoogleAccessRequest => {
+    const database = readDb();
+    if (!database.google_requests) database.google_requests = [];
+    
+    // Check if an existing request for this email exists
+    const existing = database.google_requests.find(r => r.email.toLowerCase() === req.email.toLowerCase());
+    if (existing) {
+      existing.name = req.name || existing.name;
+      existing.avatar_url = req.avatar_url || existing.avatar_url;
+      existing.google_id = req.google_id || existing.google_id;
+      existing.requested_at = new Date().toISOString();
+      existing.status = "pending";
+      writeDb(database);
+      return existing;
+    }
+
+    const newReq: GoogleAccessRequest = {
+      id: "req-" + generateUUID(),
+      email: req.email.toLowerCase(),
+      name: req.name,
+      avatar_url: req.avatar_url,
+      google_id: req.google_id,
+      requested_at: new Date().toISOString(),
+      status: "pending",
+    };
+    database.google_requests.push(newReq);
+    writeDb(database);
+    return newReq;
+  },
+
+  updateGoogleRequestStatus: (id: string, status: "approved" | "rejected") => {
+    const database = readDb();
+    if (!database.google_requests) database.google_requests = [];
+    const index = database.google_requests.findIndex(r => r.id === id);
+    if (index !== -1) {
+      database.google_requests[index].status = status;
+      writeDb(database);
+    }
+  },
+
+  deleteGoogleRequest: (id: string) => {
+    const database = readDb();
+    if (!database.google_requests) database.google_requests = [];
+    database.google_requests = database.google_requests.filter(r => r.id !== id);
     writeDb(database);
   },
 

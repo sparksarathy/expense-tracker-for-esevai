@@ -10,8 +10,9 @@ import {
   ShieldCheck, Mail, Briefcase, RefreshCw, XCircle, Trash2,
   MoreVertical, Edit2, Camera, Upload, Network, Info, Check, X,
   Phone, FileText, MapPin, Shield, User, Send, Copy, ExternalLink,
-  Clock, KeyRound, Sparkles
+  Clock, KeyRound, Sparkles, UserCheck, AlertCircle, CheckCircle2
 } from "lucide-react";
+import { authFetch } from "../lib/offlineStorage";
 
 interface EmployeeManagementProps {
   user: Profile;
@@ -111,7 +112,140 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccessData, setInviteSuccessData] = useState<any | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"roster" | "invitations">("roster");
+  const [activeTab, setActiveTab] = useState<"roster" | "google_approvals" | "invitations">("roster");
+
+  // Google ID Approvals State
+  const [googleRequests, setGoogleRequests] = useState<any[]>([]);
+  const [approvedUsers, setApprovedUsers] = useState<any[]>([]);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleActionMsg, setGoogleActionMsg] = useState<string | null>(null);
+
+  // Manual Approve Google Form State
+  const [newGoogleEmail, setNewGoogleEmail] = useState("");
+  const [newGoogleName, setNewGoogleName] = useState("");
+  const [newGoogleDesk, setNewGoogleDesk] = useState("");
+  const [newGoogleRole, setNewGoogleRole] = useState<"employee" | "owner">("employee");
+  const [approvingLoading, setApprovingLoading] = useState(false);
+
+  const fetchGoogleApprovals = async () => {
+    setGoogleLoading(true);
+    try {
+      const [reqRes, appRes] = await Promise.all([
+        authFetch("/api/admin/google-requests"),
+        authFetch("/api/admin/approved-users"),
+      ]);
+      if (reqRes.ok) {
+        const data = await reqRes.json();
+        setGoogleRequests(data.requests || []);
+      }
+      if (appRes.ok) {
+        const data = await appRes.json();
+        setApprovedUsers(data.approved || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load Google approvals:", err);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleApproveGoogleRequest = async (req: any, customDesk?: string, customRole?: "employee" | "owner") => {
+    setApprovingLoading(true);
+    setGoogleActionMsg(null);
+    try {
+      const res = await authFetch("/api/admin/approve-google-id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: req.email,
+          full_name: req.name,
+          role: customRole || "employee",
+          desk_name: customDesk || "Service Desk",
+          requestId: req.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to approve Google ID");
+      setGoogleActionMsg(data.message || `Approved ${req.email} successfully!`);
+      fetchGoogleApprovals();
+      fetchEmployees();
+      onRefresh();
+    } catch (err: any) {
+      setGoogleActionMsg("Error: " + err.message);
+    } finally {
+      setApprovingLoading(false);
+    }
+  };
+
+  const handleDismissGoogleRequest = async (id: string) => {
+    try {
+      const res = await authFetch(`/api/admin/google-requests/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchGoogleApprovals();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleManualApproveGoogleId = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGoogleEmail.trim()) return;
+    setApprovingLoading(true);
+    setGoogleActionMsg(null);
+    try {
+      const res = await authFetch("/api/admin/approve-google-id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newGoogleEmail.trim().toLowerCase(),
+          full_name: newGoogleName.trim() || undefined,
+          desk_name: newGoogleDesk.trim() || undefined,
+          role: newGoogleRole,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to approve Google ID");
+      setGoogleActionMsg(data.message || `Google ID ${newGoogleEmail} approved!`);
+      setNewGoogleEmail("");
+      setNewGoogleName("");
+      setNewGoogleDesk("");
+      fetchGoogleApprovals();
+      fetchEmployees();
+      onRefresh();
+    } catch (err: any) {
+      setGoogleActionMsg("Error: " + err.message);
+    } finally {
+      setApprovingLoading(false);
+    }
+  };
+
+  const handleToggleApprovedUser = async (userEmail: string) => {
+    try {
+      const res = await authFetch(`/api/admin/approved-users/${encodeURIComponent(userEmail)}/toggle`, { method: "PUT" });
+      if (res.ok) {
+        fetchGoogleApprovals();
+        fetchEmployees();
+        onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRevokeApprovedUser = async (userEmail: string) => {
+    if (!confirm(`Are you sure you want to revoke Google sign-in access for ${userEmail}?`)) return;
+    try {
+      const res = await authFetch(`/api/admin/approved-users/${encodeURIComponent(userEmail)}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchGoogleApprovals();
+        fetchEmployees();
+        onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -241,6 +375,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     fetchEmployees();
     fetchBranches();
     fetchInvitations();
+    fetchGoogleApprovals();
   }, []);
 
   // Handle clicking outside to close the 3-dot dropdown menu
@@ -806,8 +941,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         </div>
       </div>
 
-      {/* View Switcher: Active Staff Roster vs Invitations */}
-      <div className="flex items-center gap-2">
+      {/* View Switcher: Active Staff Roster vs Google Approvals vs Invitations */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setActiveTab("roster")}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
@@ -818,6 +953,23 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
         >
           <Users className="w-3.5 h-3.5" />
           <span>Active Staff Roster ({displayEmployees.length + (primaryOwner ? 1 : 0)})</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab("google_approvals"); fetchGoogleApprovals(); }}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "google_approvals"
+              ? "bg-[#1e3a8a] text-white shadow-sm"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Google ID Approvals</span>
+          {googleRequests.filter(r => r.status === "pending").length > 0 && (
+            <span className="bg-amber-400 text-amber-950 font-black text-[10px] px-1.5 py-0.2 rounded-full animate-pulse">
+              {googleRequests.filter(r => r.status === "pending").length} new
+            </span>
+          )}
         </button>
 
         <button
@@ -1341,7 +1493,283 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       </div>
       )}
 
-      {/* 2. INVITATIONS MANAGEMENT TAB */}
+      {/* 2. GOOGLE ID APPROVALS & ACCESS CONTROL TAB */}
+      {activeTab === "google_approvals" && (
+        <div className="space-y-6" id="google-approvals-section">
+          {/* Top Banner */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-slate-900 text-base">
+                    Employee Google ID Approvals & Access Control
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Approve staff Google email accounts (@gmail.com) to allow them to sign in with Google. Review and grant 1-click access to pending employee sign-in requests.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={fetchGoogleApprovals}
+              disabled={googleLoading}
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${googleLoading ? "animate-spin" : ""}`} />
+              <span>Refresh Approvals</span>
+            </button>
+          </div>
+
+          {/* Feedback message */}
+          {googleActionMsg && (
+            <div className="p-4 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-xs font-medium flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-blue-600" />
+                <span>{googleActionMsg}</span>
+              </div>
+              <button onClick={() => setGoogleActionMsg(null)} className="text-blue-500 hover:text-blue-800 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Section 1: Pending Access Requests */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <h4 className="font-bold text-sm text-slate-800">
+                  Pending Google Sign-In Requests
+                </h4>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                  {googleRequests.filter((r) => r.status === "pending").length} Awaiting Approval
+                </span>
+              </div>
+            </div>
+
+            {googleRequests.filter((r) => r.status === "pending").length === 0 ? (
+              <div className="p-6 bg-slate-50/70 border border-slate-200/80 rounded-2xl text-center space-y-1">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto" />
+                <p className="text-xs font-semibold text-slate-700">No Pending Requests</p>
+                <p className="text-[11px] text-slate-400">
+                  When an unapproved employee attempts to sign in with Google, their access request will appear here for one-click approval.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {googleRequests
+                  .filter((r) => r.status === "pending")
+                  .map((req) => (
+                    <div
+                      key={req.id}
+                      className="p-4 bg-white rounded-xl border border-amber-200/80 shadow-xs space-y-3 flex flex-col justify-between"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          {req.avatar_url ? (
+                            <img
+                              src={req.avatar_url}
+                              alt={req.name}
+                              className="w-10 h-10 rounded-full border border-amber-200 object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs">
+                              {req.name ? req.name.slice(0, 2).toUpperCase() : "G"}
+                            </div>
+                          )}
+                          <div>
+                            <h5 className="font-bold text-slate-900 text-xs">{req.name}</h5>
+                            <p className="text-[11px] text-slate-500 font-mono">{req.email}</p>
+                            <span className="text-[9px] text-slate-400 block mt-0.5">
+                              Requested: {new Date(req.requested_at).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          Pending
+                        </span>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDismissGoogleRequest(req.id)}
+                          className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg font-semibold cursor-pointer transition-all"
+                        >
+                          Dismiss
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approvingLoading}
+                          onClick={() => handleApproveGoogleRequest(req, "Service Counter", "employee")}
+                          className="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Approve Google ID</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Proactive / Manual Approve Form */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <UserPlus className="w-4 h-4 text-blue-900" />
+              <h4 className="font-bold text-sm text-slate-900">
+                Pre-Approve an Employee Google ID
+              </h4>
+            </div>
+
+            <form onSubmit={handleManualApproveGoogleId} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">
+                    Employee Google Email (@gmail.com) *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="staff@gmail.com"
+                    value={newGoogleEmail}
+                    onChange={(e) => setNewGoogleEmail(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-blue-600 text-slate-900 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">
+                    Employee Full Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Priya S"
+                    value={newGoogleName}
+                    onChange={(e) => setNewGoogleName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-blue-600 text-slate-900 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">
+                    Desk / Counter Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Counter 2 - Aadhaar"
+                    value={newGoogleDesk}
+                    onChange={(e) => setNewGoogleDesk(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-blue-600 text-slate-900 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">
+                    Access Role
+                  </label>
+                  <select
+                    value={newGoogleRole}
+                    onChange={(e) => setNewGoogleRole(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-blue-600 text-slate-900 font-medium"
+                  >
+                    <option value="employee">Employee (Operator)</option>
+                    <option value="owner">Admin (Center Owner)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={approvingLoading || !newGoogleEmail}
+                  className="px-4 py-2 bg-[#1e3a8a] hover:bg-blue-900 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {approvingLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  <span>Authorize & Approve Google ID</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Section 3: Approved Google Accounts Roster */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <h4 className="font-bold text-sm text-slate-900">
+                  Approved Google ID Accounts
+                </h4>
+              </div>
+              <span className="text-xs text-slate-400 font-mono">
+                {approvedUsers.length} authorized IDs
+              </span>
+            </div>
+
+            {approvedUsers.length === 0 ? (
+              <p className="text-xs text-slate-400 py-4 text-center">
+                No approved Google accounts yet. Pre-approve one above or approve pending requests.
+              </p>
+            ) : (
+              <div className="divide-y divide-slate-100 text-xs">
+                {approvedUsers.map((u) => (
+                  <div key={u.id || u.email} className="py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs">
+                        {u.full_name ? u.full_name[0].toUpperCase() : u.email[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{u.full_name || u.email.split("@")[0]}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                            u.role === "owner" ? "bg-purple-100 text-purple-800" : "bg-blue-50 text-blue-700"
+                          }`}>
+                            {u.role}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono">{u.email}</span>
+                        {u.desk_name && (
+                          <span className="text-[10px] text-slate-400 ml-2 font-sans font-medium">({u.desk_name})</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleApprovedUser(u.email)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                          u.is_active
+                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
+                      >
+                        {u.is_active ? <ToggleRight className="w-4 h-4 text-emerald-600" /> : <ToggleLeft className="w-4 h-4 text-slate-400" />}
+                        <span>{u.is_active ? "Active" : "Suspended"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRevokeApprovedUser(u.email)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                        title="Revoke approval"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {activeTab === "invitations" && (
         <div className="space-y-6" id="invitations-management-section">
           {/* Top Banner & Action */}

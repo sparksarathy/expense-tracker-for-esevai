@@ -39,6 +39,7 @@ export interface Profile {
   role: UserRole;
   password?: string;
   pin?: string;
+  google_id?: string;
   is_active: boolean;
   avatar_url?: string;
   avatar_updated_at?: string;
@@ -55,11 +56,24 @@ export interface ApprovedUser {
   organization_id: string;
   branch_id: string;
   email: string;
+  full_name?: string;
+  desk_name?: string;
+  google_id?: string;
   role: UserRole;
   is_active: boolean;
   invited_by?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface GoogleAccessRequest {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url?: string;
+  google_id?: string;
+  requested_at: string;
+  status: "pending" | "approved" | "rejected";
 }
 
 export interface ServiceCategory {

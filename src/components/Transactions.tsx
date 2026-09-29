@@ -282,7 +282,7 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
         if (user.role === "owner") payload.employee_id = editItem.employee_id;
       }
 
-      const res = await fetch(endpoint, {
+      const res = await authFetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -326,7 +326,7 @@ export default function Transactions({ user, onRefreshTrigger }: TransactionsPro
         ? `/api/income-entries/${deleteItem.id}` 
         : `/api/expense-entries/${deleteItem.id}`;
 
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await authFetch(endpoint, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Soft delete failed.");

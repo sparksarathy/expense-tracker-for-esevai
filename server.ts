@@ -261,6 +261,288 @@ app.put("/api/auth/password", requireAuth, (req, res) => {
   res.json({ success: true, message: "Security credentials updated successfully.", user: updated });
 });
 
+// =========================================================================
+// GOOGLE SIGN-IN FOR ALL EMPLOYEES & ADMIN
+// =========================================================================
+app.post("/api/auth/google", (req, res) => {
+  const { email, name, avatar_url, google_id } = req.body;
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Google email is required." });
+  }
+
+  const normalized = email.trim().toLowerCase();
+
+  // Check if authorized
+  // 1. Is it the primary center admin / owner?
+  const isCenterOwner = normalized === "csb21090@gmail.com";
+
+  // 2. Check existing profile
+  let profile = db.getProfileByEmail(normalized);
+
+  // 3. Check approved users list
+  const approvedUser = db.getApprovedUserByEmail(normalized);
+
+  // 4. Check invitation
+  const invitation = db.getInvitationByEmail(normalized);
+
+  const isAuthorized =
+    isCenterOwner ||
+    (profile && profile.is_active) ||
+    (approvedUser && approvedUser.is_active) ||
+    (invitation && invitation.status === "pending");
+
+  if (!isAuthorized) {
+    // Save this as a pending Google access request for the Admin to approve in the console!
+    db.addGoogleRequest({
+      email: normalized,
+      name: name || normalized.split("@")[0].replace(/[._-]/g, " "),
+      avatar_url: avatar_url || undefined,
+      google_id: google_id || undefined,
+    });
+
+    return res.status(403).json({
+      error: `Access Denied: Your Google ID (${normalized}) has not been approved by the Admin yet. Your access request has been sent to the Admin for approval.`,
+      pendingApproval: true,
+      email: normalized,
+    });
+  }
+
+  const org = db.getOrganizations()[0];
+  const branch = db.getBranches()[0];
+
+  if (!profile) {
+    // Auto-create profile from approved Google user or invitation
+    const roleToUse = isCenterOwner ? "owner" : (approvedUser?.role || invitation?.role || "employee");
+    const nameToUse = name || approvedUser?.full_name || invitation?.full_name || normalized.split("@")[0].replace(/[._-]/g, " ");
+
+    profile = db.createProfile({
+      id: isCenterOwner ? "admin-user-id-mock-uuid-key" : ("user-id-" + Math.random().toString(36).substring(2, 11)),
+      organization_id: (approvedUser && approvedUser.organization_id) || (invitation && invitation.organization_id) || org.id,
+      branch_id: (approvedUser && approvedUser.branch_id) || (invitation && invitation.branch_id) || branch.id,
+      full_name: nameToUse,
+      email: normalized,
+      role: roleToUse,
+      google_id: google_id || undefined,
+      avatar_url: avatar_url || undefined,
+      desk_name: approvedUser?.desk_name || invitation?.desk_name || (isCenterOwner ? "Main Admin Desk" : "Desk 1"),
+      phone_number: invitation?.phone_number || undefined,
+      is_active: true,
+      joining_date: new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    if (invitation) {
+      db.updateInvitation(invitation.id, { status: "accepted", accepted_at: new Date().toISOString() });
+    }
+  } else {
+    if (!profile.is_active) {
+      return res.status(403).json({ error: "Access denied. Your employee Google account has been deactivated by the Admin." });
+    }
+
+    // Update avatar and google_id if supplied
+    const updates: Partial<Profile> = {};
+    if (avatar_url && avatar_url !== profile.avatar_url) {
+      updates.avatar_url = avatar_url;
+    }
+    if (google_id && google_id !== profile.google_id) {
+      updates.google_id = google_id;
+    }
+    if (name && (!profile.full_name || profile.full_name === normalized.split("@")[0])) {
+      updates.full_name = name;
+    }
+    if (Object.keys(updates).length > 0) {
+      profile = db.updateProfile(profile.id, updates);
+    }
+  }
+
+  // If this Google ID was in pending requests, mark it as approved
+  const requests = db.getGoogleRequests();
+  const reqMatch = requests.find(r => r.email.toLowerCase() === normalized);
+  if (reqMatch) {
+    db.updateGoogleRequestStatus(reqMatch.id, "approved");
+  }
+
+  // Audit log
+  db.addAuditLog({
+    organization_id: profile.organization_id,
+    user_id: profile.id,
+    action: "LOGIN",
+    entity_type: "profiles",
+    entity_id: profile.id,
+    new_values: JSON.stringify({
+      email: profile.email,
+      method: "GOOGLE_SIGN_IN",
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  // 30 days persistent cookie
+  res.cookie("auth_session_id", profile.id, {
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: "/",
+    sameSite: "none",
+    secure: true,
+  });
+
+  res.json({
+    success: true,
+    user: profile,
+    token: profile.id,
+    message: "Google sign-in successful.",
+  });
+});
+
+// =========================================================================
+// ADMIN CONSOLE: GOOGLE ID APPROVALS & ACCESS CONTROL
+// =========================================================================
+app.get("/api/admin/google-requests", requireOwner, (req, res) => {
+  const requests = db.getGoogleRequests();
+  res.json({ requests });
+});
+
+app.post("/api/admin/approve-google-id", requireOwner, (req, res) => {
+  const admin = (req as any).user as Profile;
+  const { email, full_name, role, desk_name, phone_number, requestId } = req.body;
+
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Google email is required." });
+  }
+
+  const normalized = email.trim().toLowerCase();
+  const org = db.getOrganizations()[0];
+  const branch = db.getBranches()[0];
+
+  // 1. Add or update ApprovedUser
+  let approved = db.getApprovedUserByEmail(normalized);
+  if (!approved) {
+    approved = db.addApprovedUser({
+      organization_id: org.id,
+      branch_id: branch.id,
+      email: normalized,
+      full_name: full_name ? full_name.trim() : undefined,
+      desk_name: desk_name ? desk_name.trim() : undefined,
+      role: role === "owner" ? "owner" : "employee",
+      is_active: true,
+      invited_by: admin.id,
+    });
+  } else {
+    approved = db.updateApprovedUser(normalized, {
+      role: role === "owner" ? "owner" : "employee",
+      full_name: full_name ? full_name.trim() : approved.full_name,
+      desk_name: desk_name ? desk_name.trim() : approved.desk_name,
+      is_active: true,
+    });
+  }
+
+  // 2. If profile exists, ensure active and updated
+  let profile = db.getProfileByEmail(normalized);
+  if (profile) {
+    profile = db.updateProfile(profile.id, {
+      is_active: true,
+      role: role === "owner" ? "owner" : "employee",
+      desk_name: desk_name ? desk_name.trim() : profile.desk_name,
+      full_name: full_name ? full_name.trim() : profile.full_name,
+      phone_number: phone_number ? phone_number.trim() : profile.phone_number,
+    });
+  } else {
+    // Create pre-approved profile
+    profile = db.createProfile({
+      id: "user-id-" + Math.random().toString(36).substring(2, 11),
+      organization_id: org.id,
+      branch_id: branch.id,
+      full_name: full_name ? full_name.trim() : normalized.split("@")[0].replace(/[._-]/g, " "),
+      email: normalized,
+      role: role === "owner" ? "owner" : "employee",
+      desk_name: desk_name ? desk_name.trim() : "Service Desk",
+      phone_number: phone_number ? phone_number.trim() : undefined,
+      is_active: true,
+      joining_date: new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  // 3. If tied to a request, mark it as approved
+  if (requestId) {
+    db.updateGoogleRequestStatus(requestId, "approved");
+  } else {
+    const requests = db.getGoogleRequests();
+    const reqMatch = requests.find(r => r.email.toLowerCase() === normalized);
+    if (reqMatch) {
+      db.updateGoogleRequestStatus(reqMatch.id, "approved");
+    }
+  }
+
+  // Audit log
+  db.addAuditLog({
+    organization_id: org.id,
+    user_id: admin.id,
+    action: "APPROVE_GOOGLE_ID",
+    entity_type: "approved_users",
+    entity_id: approved.id,
+    new_values: JSON.stringify({
+      approved_email: normalized,
+      role: role || "employee",
+      desk_name: desk_name || "Service Desk",
+      approved_by: admin.email,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+
+  res.json({
+    success: true,
+    message: `Google ID ${normalized} has been approved for ${role || "employee"} desk access!`,
+    approvedUser: approved,
+    profile,
+  });
+});
+
+app.delete("/api/admin/google-requests/:id", requireOwner, (req, res) => {
+  db.deleteGoogleRequest(req.params.id);
+  res.json({ success: true, message: "Request dismissed." });
+});
+
+app.get("/api/admin/approved-users", requireOwner, (req, res) => {
+  const approved = db.getApprovedUsers();
+  res.json({ approved });
+});
+
+app.put("/api/admin/approved-users/:email/toggle", requireOwner, (req, res) => {
+  const { email } = req.params;
+  const normalized = email.trim().toLowerCase();
+  const approved = db.getApprovedUserByEmail(normalized);
+  if (!approved) {
+    return res.status(404).json({ error: "Approved user not found." });
+  }
+
+  const newStatus = !approved.is_active;
+  const updated = db.updateApprovedUser(normalized, { is_active: newStatus });
+
+  // Also toggle matching profile
+  const profile = db.getProfileByEmail(normalized);
+  if (profile) {
+    db.updateProfile(profile.id, { is_active: newStatus });
+  }
+
+  res.json({ success: true, approvedUser: updated, is_active: newStatus });
+});
+
+app.delete("/api/admin/approved-users/:email", requireOwner, (req, res) => {
+  const { email } = req.params;
+  const normalized = email.trim().toLowerCase();
+  db.deleteApprovedUser(normalized);
+
+  // Deactivate profile
+  const profile = db.getProfileByEmail(normalized);
+  if (profile) {
+    db.updateProfile(profile.id, { is_active: false });
+  }
+
+  res.json({ success: true, message: `Approval revoked for ${normalized}.` });
+});
+
 // Step 1: Request Email Verification Code (OTP)
 app.post("/api/auth/send-otp", (req, res) => {
   const { email } = req.body;
