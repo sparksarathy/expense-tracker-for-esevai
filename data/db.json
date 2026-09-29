@@ -3,61 +3,46 @@
     {
       "id": "88888888-8888-4888-a888-888888888888",
       "name": "SS E-SEVAI MAIYAM",
-      "logo_url": "",
-      "address": "Main Road, Near Bus Stand, Tamil Nadu",
-      "phone": "+91 9876543210",
-      "email": "contact@esevaimaiyam.in",
-      "timezone": "Asia/Kolkata",
-      "currency": "INR",
-      "created_at": "2026-07-19T11:50:31.708Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "slug": "ss-e-sevai-maiyam",
+      "email": "ssesevai@gmail.com",
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
     }
   ],
   "branches": [
     {
       "id": "77777777-7777-4777-a777-777777777777",
       "organization_id": "88888888-8888-4888-a888-888888888888",
-      "name": "Main Branch",
-      "address": "Main Road, Near Bus Stand",
-      "is_active": true,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "branch_name": "Main Center",
+      "location": "Main Road, SS E-Sevai Maiyam",
+      "contact_number": "9876543210",
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
     }
   ],
-  "profiles": [
+  "approved_users": [
     {
-      "id": "admin-user-id-mock-uuid-key",
+      "id": "appr-ssesevai-id",
       "organization_id": "88888888-8888-4888-a888-888888888888",
       "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "Spark",
+      "email": "ssesevai@gmail.com",
+      "role": "owner",
+      "is_active": true,
+      "created_at": "2026-09-29T12:22:20.467Z",
+      "updated_at": "2026-09-29T12:22:20.467Z"
+    },
+    {
+      "id": "appr-csb21090-id",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
       "email": "csb21090@gmail.com",
       "role": "owner",
       "is_active": true,
-      "joining_date": "2024-10-01",
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-09-29T11:24:15.450Z",
-      "desk_name": "Main Admin Desk",
-      "phone_number": "+91 9876543210",
-      "notes": "Primary Center Administrator & Owner",
-      "avatar_url": "https://ui-avatars.com/api/?name=csb21090%40gmail.com&background=1e3a8a&color=fff",
-      "avatar_updated_at": null,
-      "google_id": "g-880uzanm",
-      "password": "123456"
-    },
-    {
-      "id": "user-id-334utn537",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "Tester Staff",
-      "email": "staff.tester@gmail.com",
-      "role": "employee",
-      "desk_name": "Desk 2",
-      "is_active": true,
-      "email_verified": true,
-      "joining_date": "2026-09-29",
-      "created_at": "2026-09-29T10:33:03.999Z",
-      "updated_at": "2026-09-29T10:33:31.787Z"
-    },
+      "created_at": "2026-09-29T12:22:20.467Z",
+      "updated_at": "2026-09-29T12:22:20.467Z"
+    }
+  ],
+  "profiles": [
     {
       "id": "admin-user-ssesevai-id",
       "organization_id": "88888888-8888-4888-a888-888888888888",
@@ -65,174 +50,186 @@
       "full_name": "SS E-Sevai (Owner)",
       "email": "ssesevai@gmail.com",
       "role": "owner",
+      "password": "admin123",
+      "desk_name": "Main Admin Desk",
       "is_active": true,
-      "joining_date": "2024-10-01",
-      "created_at": "2026-09-29T11:15:41.355Z",
-      "updated_at": "2026-09-29T11:20:53.710Z",
-      "password": "admin"
-    },
-    {
-      "id": "user-id-cujh3389g",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "M. Murugan",
-      "email": "murugan.staff@gmail.com",
-      "role": "employee",
-      "password": "MySecretPass2026",
-      "phone_number": "9840112233",
-      "desk_name": "Counter 1",
-      "is_active": true,
-      "email_verified": false,
-      "joining_date": "2026-09-29",
-      "created_at": "2026-09-29T11:21:01.393Z",
-      "updated_at": "2026-09-29T11:21:24.214Z"
-    },
-    {
-      "id": "user-id-trjana5wp",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "test",
-      "email": "123@gmail.com",
-      "role": "employee",
-      "password": "123456",
-      "phone_number": "22521",
-      "desk_name": "Service Counter",
-      "is_active": true,
-      "email_verified": false,
-      "joining_date": "2026-09-29",
-      "created_at": "2026-09-29T11:23:42.302Z",
-      "updated_at": "2026-09-29T11:24:34.584Z"
-    },
-    {
-      "id": "user-id-gen80svws",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "spark",
-      "email": "spark@gmail.com",
-      "role": "employee",
-      "desk_name": "Service Counter",
-      "is_active": true,
-      "joining_date": "2026-09-29",
-      "created_at": "2026-09-29T11:24:36.710Z",
-      "updated_at": "2026-09-29T11:24:36.710Z"
-    },
-    {
-      "id": "user-id-ehdbpqm49",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "ssesvai",
-      "email": "ssesvai@gmail.com",
-      "role": "employee",
-      "google_id": "g-vukd7yfn",
-      "avatar_url": "https://ui-avatars.com/api/?name=ssesvai%40gmail.com&background=1e3a8a&color=fff",
-      "desk_name": "Service Desk",
-      "is_active": false,
       "email_verified": true,
-      "joining_date": "2026-09-29",
-      "created_at": "2026-09-29T11:26:02.283Z",
-      "updated_at": "2026-09-29T11:26:11.718Z"
+      "joining_date": "2024-10-01",
+      "created_at": "2026-09-29T12:22:20.467Z",
+      "updated_at": "2026-09-29T12:22:20.467Z"
     },
-    {
-      "id": "user-id-s8s5gp8h8",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "full_name": "Kavitha S",
-      "email": "kavitha.staff@gmail.com",
-      "role": "employee",
-      "password": "KavithaPassword2026",
-      "phone_number": "9811223344",
-      "desk_name": "Counter 2",
-      "is_active": true,
-      "email_verified": false,
-      "joining_date": "2026-09-29",
-      "created_at": "2026-09-29T11:44:21.931Z",
-      "updated_at": "2026-09-29T11:44:39.799Z"
-    }
-  ],
-  "approved_users": [
     {
       "id": "admin-user-id-mock-uuid-key",
       "organization_id": "88888888-8888-4888-a888-888888888888",
       "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "Spark (Owner)",
       "email": "csb21090@gmail.com",
       "role": "owner",
+      "password": "admin123",
+      "desk_name": "Admin Control Desk",
       "is_active": true,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-09-28T17:07:02.799Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "email": "staff.tester@gmail.com",
-      "desk_name": "Desk 2",
-      "role": "employee",
-      "is_active": true,
-      "invited_by": "admin-user-id-mock-uuid-key",
-      "id": "72ed86c0-ccdf-4ed3-944b-d6a1d58d7366",
-      "created_at": "2026-09-29T10:33:31.786Z",
-      "updated_at": "2026-09-29T10:33:31.786Z"
-    },
-    {
-      "id": "owner-ssesevai-approved-id",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "email": "ssesevai@gmail.com",
-      "role": "owner",
-      "is_active": true,
-      "created_at": "2026-09-29T11:15:41.355Z",
-      "updated_at": "2026-09-29T11:15:41.355Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "email": "murugan.staff@gmail.com",
-      "desk_name": "Counter 1",
-      "role": "employee",
-      "is_active": true,
-      "invited_by": "admin-user-ssesevai-id",
-      "id": "f69bdc98-4125-40b2-acf6-0c688c66d8f3",
-      "created_at": "2026-09-29T11:21:24.214Z",
-      "updated_at": "2026-09-29T11:21:24.214Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "email": "123@gmail.com",
-      "full_name": "test",
-      "desk_name": "Service Counter",
-      "role": "employee",
-      "is_active": true,
-      "invited_by": "admin-user-id-mock-uuid-key",
-      "id": "3883698a-3c91-4255-95f2-60139f022f52",
-      "created_at": "2026-09-29T11:24:34.583Z",
-      "updated_at": "2026-09-29T11:24:34.583Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "email": "spark@gmail.com",
-      "full_name": "spark",
-      "desk_name": "Service Counter",
-      "role": "employee",
-      "is_active": true,
-      "invited_by": "admin-user-id-mock-uuid-key",
-      "id": "a70d7815-9471-4744-abd7-2744cb0035f3",
-      "created_at": "2026-09-29T11:24:36.709Z",
-      "updated_at": "2026-09-29T11:24:36.709Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "branch_id": "77777777-7777-4777-a777-777777777777",
-      "email": "kavitha.staff@gmail.com",
-      "desk_name": "Counter 2",
-      "role": "employee",
-      "is_active": true,
-      "invited_by": "admin-user-id-mock-uuid-key",
-      "id": "a820cec4-c00b-4715-aca8-9023bd3e2521",
-      "created_at": "2026-09-29T11:44:39.798Z",
-      "updated_at": "2026-09-29T11:44:39.798Z"
+      "email_verified": true,
+      "joining_date": "2024-10-01",
+      "created_at": "2026-09-29T12:22:20.467Z",
+      "updated_at": "2026-09-29T12:22:20.467Z"
     }
   ],
+  "categories": [
+    {
+      "id": "cat-1",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Certificates",
+      "type": "income",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "cat-2",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Card Services",
+      "type": "income",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "cat-3",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Bill Payments",
+      "type": "income",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "cat-4",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Stationery & Printing",
+      "type": "expense",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "cat-5",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Electricity & Utility",
+      "type": "expense",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "cat-6",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Rent & Maintenance",
+      "type": "expense",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "cat-7",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Portal Wallet Recharge",
+      "type": "expense",
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    }
+  ],
+  "services": [
+    {
+      "id": "srv-1",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Aadhaar Update",
+      "default_rate": 100,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-2",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "PAN Card Service",
+      "default_rate": 150,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-3",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Income Certificate",
+      "default_rate": 80,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-4",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Community Certificate",
+      "default_rate": 80,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-5",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Nativity Certificate",
+      "default_rate": 80,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-6",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Ration Card Service",
+      "default_rate": 120,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-7",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Electricity Bill Payment",
+      "default_rate": 50,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    },
+    {
+      "id": "srv-8",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "name": "Printing and Scanning",
+      "default_rate": 20,
+      "is_active": true,
+      "created_at": "2026-09-29T12:15:54.971Z",
+      "updated_at": "2026-09-29T12:15:54.971Z"
+    }
+  ],
+  "income_entries": [],
+  "expense_entries": [],
+  "google_requests": [],
+  "invitations": [],
+  "audit_logs": [],
+  "settings": {
+    "id": "settings-singleton-id",
+    "organization_id": "88888888-8888-4888-a888-888888888888",
+    "center_name": "SS E-SEVAI MAIYAM",
+    "receipt_header": "SS E-SEVAI MAIYAM",
+    "currency_symbol": "₹",
+    "allow_custom_rates": true,
+    "require_customer_phone": false,
+    "created_at": "2026-09-29T12:15:54.971Z",
+    "updated_at": "2026-09-29T12:15:54.971Z"
+  },
+  "service_rate_history": [],
   "service_categories": [
     {
       "id": "service-cat-0",
@@ -243,8 +240,8 @@
       "default_rate": 100,
       "is_active": true,
       "display_order": 1,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.159Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-1",
@@ -255,8 +252,8 @@
       "default_rate": 150,
       "is_active": true,
       "display_order": 2,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-2",
@@ -267,8 +264,8 @@
       "default_rate": 1500,
       "is_active": true,
       "display_order": 3,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-3",
@@ -279,8 +276,8 @@
       "default_rate": 100,
       "is_active": true,
       "display_order": 4,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-4",
@@ -291,8 +288,8 @@
       "default_rate": 80,
       "is_active": true,
       "display_order": 5,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-5",
@@ -303,8 +300,8 @@
       "default_rate": 80,
       "is_active": true,
       "display_order": 6,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-6",
@@ -315,8 +312,8 @@
       "default_rate": 80,
       "is_active": true,
       "display_order": 7,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-7",
@@ -327,8 +324,8 @@
       "default_rate": 100,
       "is_active": true,
       "display_order": 8,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-8",
@@ -339,8 +336,8 @@
       "default_rate": 100,
       "is_active": true,
       "display_order": 9,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-9",
@@ -351,8 +348,8 @@
       "default_rate": 120,
       "is_active": true,
       "display_order": 10,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-10",
@@ -363,8 +360,8 @@
       "default_rate": 350,
       "is_active": true,
       "display_order": 11,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-11",
@@ -375,8 +372,8 @@
       "default_rate": 50,
       "is_active": true,
       "display_order": 12,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-12",
@@ -387,8 +384,8 @@
       "default_rate": 100,
       "is_active": true,
       "display_order": 13,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-13",
@@ -399,8 +396,8 @@
       "default_rate": 20,
       "is_active": true,
       "display_order": 14,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "service-cat-14",
@@ -411,8 +408,8 @@
       "default_rate": 100,
       "is_active": true,
       "display_order": 15,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.709Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     }
   ],
   "expense_categories": [
@@ -423,8 +420,8 @@
       "description": "Business operations cost for Printing",
       "is_active": true,
       "display_order": 1,
-      "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-1",
@@ -433,8 +430,8 @@
       "description": "Business operations cost for Paper and Stationery",
       "is_active": true,
       "display_order": 2,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-2",
@@ -443,8 +440,8 @@
       "description": "Business operations cost for Internet",
       "is_active": true,
       "display_order": 3,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-3",
@@ -453,8 +450,8 @@
       "description": "Business operations cost for Electricity",
       "is_active": true,
       "display_order": 4,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-4",
@@ -463,8 +460,8 @@
       "description": "Business operations cost for Rent",
       "is_active": true,
       "display_order": 5,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-5",
@@ -473,8 +470,8 @@
       "description": "Business operations cost for Employee Advance",
       "is_active": true,
       "display_order": 6,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-6",
@@ -483,8 +480,8 @@
       "description": "Business operations cost for Travel",
       "is_active": true,
       "display_order": 7,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-7",
@@ -493,8 +490,8 @@
       "description": "Business operations cost for Government Fee",
       "is_active": true,
       "display_order": 8,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-8",
@@ -503,8 +500,8 @@
       "description": "Business operations cost for Equipment Maintenance",
       "is_active": true,
       "display_order": 9,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-9",
@@ -513,8 +510,8 @@
       "description": "Business operations cost for Software Subscription",
       "is_active": true,
       "display_order": 10,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     },
     {
       "id": "expense-cat-10",
@@ -523,224 +520,8 @@
       "description": "Business operations cost for Other Expense",
       "is_active": true,
       "display_order": 11,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
-    }
-  ],
-  "income_entries": [],
-  "expense_entries": [],
-  "audit_logs": [
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGOUT",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "id": "5ebcabdf-c34e-4e66-be6c-1e765d55980d",
-      "created_at": "2026-09-29T07:04:45.645Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGOUT",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "id": "667b227d-ca5b-4807-a24e-9c17f634c02c",
-      "created_at": "2026-09-29T10:03:47.164Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGIN",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "new_values": "{\"email\":\"csb21090@gmail.com\",\"method\":\"GOOGLE_SIGN_IN\",\"timestamp\":\"2026-09-29T10:03:56.373Z\"}",
-      "id": "1fc800d0-87e5-4f55-8a0e-a4de9e45f8d6",
-      "created_at": "2026-09-29T10:03:56.373Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGOUT",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "id": "11d95777-e74e-4b8c-9d9a-3e05394b939d",
-      "created_at": "2026-09-29T10:04:08.621Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-ssesevai-id",
-      "action": "LOGIN",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-ssesevai-id",
-      "new_values": "{\"email\":\"ssesevai@gmail.com\",\"method\":\"EMAIL_PASSWORD\",\"timestamp\":\"2026-09-29T11:20:53.710Z\"}",
-      "id": "ce1d32e7-4862-4b68-8aca-90118a662c1a",
-      "created_at": "2026-09-29T11:20:53.711Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "user-id-cujh3389g",
-      "action": "CREATE",
-      "entity_type": "profiles",
-      "entity_id": "user-id-cujh3389g",
-      "new_values": "{\"email\":\"murugan.staff@gmail.com\",\"method\":\"SELF_REGISTRATION\",\"role\":\"employee\",\"is_active\":false,\"timestamp\":\"2026-09-29T11:21:01.394Z\"}",
-      "id": "6fd2c955-55af-4af8-aeaa-e5148c72bc5b",
-      "created_at": "2026-09-29T11:21:01.394Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "user-id-trjana5wp",
-      "action": "CREATE",
-      "entity_type": "profiles",
-      "entity_id": "user-id-trjana5wp",
-      "new_values": "{\"email\":\"123@gmail.com\",\"method\":\"SELF_REGISTRATION\",\"role\":\"employee\",\"is_active\":false,\"timestamp\":\"2026-09-29T11:23:42.302Z\"}",
-      "id": "d6e2d69a-f16c-4684-9a98-1af3702c61b0",
-      "created_at": "2026-09-29T11:23:42.302Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGIN",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "new_values": "{\"email\":\"csb21090@gmail.com\",\"method\":\"EMAIL_PASSWORD\",\"timestamp\":\"2026-09-29T11:24:15.450Z\"}",
-      "id": "b39af3ec-295b-4837-bbcd-3eddb85269a6",
-      "created_at": "2026-09-29T11:24:15.450Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "APPROVE_GOOGLE_ID",
-      "entity_type": "approved_users",
-      "entity_id": "3883698a-3c91-4255-95f2-60139f022f52",
-      "new_values": "{\"approved_email\":\"123@gmail.com\",\"role\":\"employee\",\"desk_name\":\"Service Counter\",\"approved_by\":\"csb21090@gmail.com\",\"timestamp\":\"2026-09-29T11:24:34.584Z\"}",
-      "id": "c1c1ce7b-531c-4229-8adb-5ba048d9711f",
-      "created_at": "2026-09-29T11:24:34.584Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "APPROVE_GOOGLE_ID",
-      "entity_type": "approved_users",
-      "entity_id": "a70d7815-9471-4744-abd7-2744cb0035f3",
-      "new_values": "{\"approved_email\":\"spark@gmail.com\",\"role\":\"employee\",\"desk_name\":\"Service Counter\",\"approved_by\":\"csb21090@gmail.com\",\"timestamp\":\"2026-09-29T11:24:36.710Z\"}",
-      "id": "48c43c89-3d17-48bf-a87c-ed5fbd653066",
-      "created_at": "2026-09-29T11:24:36.710Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGOUT",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "id": "13c4007b-cb96-458c-a94e-bedfa7c2c637",
-      "created_at": "2026-09-29T11:24:48.155Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "user-id-trjana5wp",
-      "action": "LOGIN",
-      "entity_type": "profiles",
-      "entity_id": "user-id-trjana5wp",
-      "new_values": "{\"email\":\"123@gmail.com\",\"method\":\"EMAIL_PASSWORD\",\"timestamp\":\"2026-09-29T11:25:14.161Z\"}",
-      "id": "a0fa6ac2-6345-4b46-8d9e-963b2ec7a077",
-      "created_at": "2026-09-29T11:25:14.161Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "user-id-trjana5wp",
-      "action": "LOGOUT",
-      "entity_type": "profiles",
-      "entity_id": "user-id-trjana5wp",
-      "id": "0bee62ea-2c37-4e89-8034-2396b6acc28d",
-      "created_at": "2026-09-29T11:25:26.200Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "admin-user-id-mock-uuid-key",
-      "action": "LOGOUT",
-      "entity_type": "profiles",
-      "entity_id": "admin-user-id-mock-uuid-key",
-      "id": "e03f6eca-60e4-4507-8104-b2df4c0ef152",
-      "created_at": "2026-09-29T11:25:38.967Z"
-    },
-    {
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "user_id": "user-id-s8s5gp8h8",
-      "action": "CREATE",
-      "entity_type": "profiles",
-      "entity_id": "user-id-s8s5gp8h8",
-      "new_values": "{\"email\":\"kavitha.staff@gmail.com\",\"method\":\"SELF_REGISTRATION\",\"role\":\"employee\",\"is_active\":false,\"timestamp\":\"2026-09-29T11:44:21.932Z\"}",
-      "id": "6c58d15c-1320-405c-ab38-e6a43e58884f",
-      "created_at": "2026-09-29T11:44:21.932Z"
-    }
-  ],
-  "app_settings": [
-    {
-      "id": "89f19b2e-94ae-41b2-b0df-cc0306a98c94",
-      "organization_id": "88888888-8888-4888-a888-888888888888",
-      "allow_employee_editing": true,
-      "employee_editing_limit_hours": 24,
-      "require_expense_receipt": false,
-      "created_at": "2026-07-19T11:50:31.710Z",
-      "updated_at": "2026-07-19T11:50:31.710Z"
-    }
-  ],
-  "service_rate_history": [],
-  "invitations": [],
-  "google_requests": [
-    {
-      "id": "req-d7d8965b-a0cf-48e7-bc2e-12b113a06f71",
-      "email": "spark@gmail.com",
-      "name": "spark",
-      "avatar_url": "https://ui-avatars.com/api/?name=spark%40gmail.com&background=1e3a8a&color=fff",
-      "google_id": "g-1sgkesq1",
-      "requested_at": "2026-09-29T10:06:12.268Z",
-      "status": "approved"
-    },
-    {
-      "id": "req-50b49fdd-bfd3-49dd-8bb8-68cce5614b7c",
-      "email": "staff.tester@gmail.com",
-      "name": "staff tester",
-      "requested_at": "2026-09-29T10:33:10.819Z",
-      "status": "approved",
-      "email_verified": true,
-      "verified_at": "2026-09-29T10:33:10.819Z"
-    },
-    {
-      "id": "req-cc0e207c-b32b-4981-8e9d-1317e236144a",
-      "email": "murugan.staff@gmail.com",
-      "name": "M. Murugan",
-      "requested_at": "2026-09-29T11:21:01.394Z",
-      "status": "approved",
-      "email_verified": false
-    },
-    {
-      "id": "req-ee6941cb-5cd1-42e0-95bc-576f60a47d99",
-      "email": "123@gmail.com",
-      "name": "test",
-      "requested_at": "2026-09-29T11:23:42.303Z",
-      "status": "approved",
-      "email_verified": false
-    },
-    {
-      "id": "req-0ec23e6e-4578-4053-847d-a88cac7ad892",
-      "email": "ssesvai@gmail.com",
-      "name": "ssesvai",
-      "avatar_url": "https://ui-avatars.com/api/?name=ssesvai%40gmail.com&background=1e3a8a&color=fff",
-      "google_id": "g-vukd7yfn",
-      "requested_at": "2026-09-29T11:26:11.718Z",
-      "status": "pending",
-      "email_verified": true,
-      "verified_at": "2026-09-29T11:26:11.719Z"
-    },
-    {
-      "id": "req-3e2c1082-10f4-4b29-9f9b-8f46da41c9e2",
-      "email": "kavitha.staff@gmail.com",
-      "name": "Kavitha S",
-      "requested_at": "2026-09-29T11:44:21.932Z",
-      "status": "approved",
-      "email_verified": false
+      "created_at": "2026-09-29T12:30:38.160Z",
+      "updated_at": "2026-09-29T12:30:38.160Z"
     }
   ]
 }

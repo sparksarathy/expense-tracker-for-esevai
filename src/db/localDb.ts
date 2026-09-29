@@ -106,25 +106,31 @@ function getInitialData(): DatabaseSchema {
   // Pre-seed owner profiles for administrator access
   const profiles: Profile[] = [
     {
-      id: "admin-user-id-mock-uuid-key",
-      organization_id: orgId,
-      branch_id: branchId,
-      full_name: "Spark (Owner)",
-      email: "csb21090@gmail.com",
-      role: "owner",
-      is_active: true,
-      joining_date: "2024-10-01",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
       id: "admin-user-ssesevai-id",
       organization_id: orgId,
       branch_id: branchId,
       full_name: "SS E-Sevai (Owner)",
       email: "ssesevai@gmail.com",
       role: "owner",
+      password: "admin123",
+      desk_name: "Main Admin Desk",
       is_active: true,
+      email_verified: true,
+      joining_date: "2024-10-01",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: "admin-user-id-mock-uuid-key",
+      organization_id: orgId,
+      branch_id: branchId,
+      full_name: "Spark (Owner)",
+      email: "csb21090@gmail.com",
+      role: "owner",
+      password: "admin123",
+      desk_name: "Admin Control Desk",
+      is_active: true,
+      email_verified: true,
       joining_date: "2024-10-01",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -225,14 +231,49 @@ function readDb(): DatabaseSchema {
     return dbCache;
   }
 
+  const initial = getInitialData();
+
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const data = fs.readFileSync(DB_FILE_PATH, "utf-8");
       dbCache = JSON.parse(data);
-      if (!dbCache!.invitations) {
+      if (!dbCache!.organizations || !Array.isArray(dbCache!.organizations)) {
+        dbCache!.organizations = initial.organizations;
+      }
+      if (!dbCache!.branches || !Array.isArray(dbCache!.branches)) {
+        dbCache!.branches = initial.branches;
+      }
+      if (!dbCache!.profiles || !Array.isArray(dbCache!.profiles)) {
+        dbCache!.profiles = initial.profiles;
+      }
+      if (!dbCache!.approved_users || !Array.isArray(dbCache!.approved_users)) {
+        dbCache!.approved_users = initial.approved_users;
+      }
+      if (!dbCache!.service_categories || !Array.isArray(dbCache!.service_categories)) {
+        dbCache!.service_categories = initial.service_categories;
+      }
+      if (!dbCache!.expense_categories || !Array.isArray(dbCache!.expense_categories)) {
+        dbCache!.expense_categories = initial.expense_categories;
+      }
+      if (!dbCache!.income_entries || !Array.isArray(dbCache!.income_entries)) {
+        dbCache!.income_entries = [];
+      }
+      if (!dbCache!.expense_entries || !Array.isArray(dbCache!.expense_entries)) {
+        dbCache!.expense_entries = [];
+      }
+      if (!dbCache!.audit_logs || !Array.isArray(dbCache!.audit_logs)) {
+        dbCache!.audit_logs = [];
+      }
+      if (!dbCache!.app_settings || !Array.isArray(dbCache!.app_settings)) {
+        dbCache!.app_settings = initial.app_settings;
+      }
+      if (!dbCache!.service_rate_history || !Array.isArray(dbCache!.service_rate_history)) {
+        dbCache!.service_rate_history = [];
+      }
+      if (!dbCache!.invitations || !Array.isArray(dbCache!.invitations)) {
         dbCache!.invitations = [];
       }
-      if (!dbCache!.google_requests) {
+      if (!dbCache!.google_requests || !Array.isArray(dbCache!.google_requests)) {
         dbCache!.google_requests = [];
       }
       return dbCache!;
@@ -264,16 +305,16 @@ function writeDb(data: DatabaseSchema) {
 // Database Operations Core
 export const db = {
   // Query operations
-  getOrganizations: () => readDb().organizations,
-  getBranches: () => readDb().branches,
-  getProfiles: () => readDb().profiles,
-  getApprovedUsers: () => readDb().approved_users,
-  getServiceCategories: () => readDb().service_categories,
-  getExpenseCategories: () => readDb().expense_categories,
-  getIncomeEntries: () => readDb().income_entries.filter(e => !e.deleted_at),
-  getExpenseEntries: () => readDb().expense_entries.filter(e => !e.deleted_at),
-  getAuditLogs: () => readDb().audit_logs,
-  getAppSettings: () => readDb().app_settings[0],
+  getOrganizations: () => readDb().organizations || [],
+  getBranches: () => readDb().branches || [],
+  getProfiles: () => readDb().profiles || [],
+  getApprovedUsers: () => readDb().approved_users || [],
+  getServiceCategories: () => readDb().service_categories || [],
+  getExpenseCategories: () => readDb().expense_categories || [],
+  getIncomeEntries: () => (readDb().income_entries || []).filter(e => !e.deleted_at),
+  getExpenseEntries: () => (readDb().expense_entries || []).filter(e => !e.deleted_at),
+  getAuditLogs: () => readDb().audit_logs || [],
+  getAppSettings: () => (readDb().app_settings && readDb().app_settings[0]) || getInitialData().app_settings[0],
   getServiceRateHistory: () => readDb().service_rate_history || [],
 
   // Specific finding helpers

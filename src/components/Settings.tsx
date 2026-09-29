@@ -105,7 +105,7 @@ export default function Settings({ user }: SettingsProps) {
     // Verify logged in user is a master admin
     const isMaster = ["csb21090@gmail.com", "ssesevai@gmail.com"].includes(user.email.toLowerCase());
     if (!isMaster) {
-      setDangerError("Access Denied: Data formatting/reset is strictly restricted to primary shop owners (csb21090@gmail.com / ssesevai@gmail.com) only.");
+      setDangerError("Access Denied: Data formatting/reset is strictly restricted to primary shop owner (ssesevai@gmail.com) only.");
       return;
     }
 
@@ -340,7 +340,7 @@ export default function Settings({ user }: SettingsProps) {
                 <span>RESTRICTED ACCESS WARNING</span>
               </div>
               <p className="text-[10.5px] leading-relaxed font-medium">
-                System formatting (destructive system reset) is locked. Under security operating guidelines, only the primary shop owner accounts (<strong className="font-bold">csb21090@gmail.com</strong> / <strong className="font-bold">ssesevai@gmail.com</strong>) have formatting authority.
+                System formatting (destructive system reset) is locked. Under security operating guidelines, only the primary shop owner account (<strong className="font-bold">ssesevai@gmail.com</strong>) has formatting authority.
               </p>
             </div>
           ) : (
