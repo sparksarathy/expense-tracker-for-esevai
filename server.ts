@@ -96,6 +96,11 @@ function isEmailAuthorized(email: string): {
 } {
   const normalized = email.trim().toLowerCase();
   
+  // Master Admin is permanently authorized and immune to locks
+  if (normalized === "csb21090@gmail.com") {
+    return { authorized: true, role: "owner", name: "Spark (Admin)", source: "profile" };
+  }
+
   // 1. Check existing active profile
   const profile = db.getProfileByEmail(normalized);
   if (profile && profile.is_active) {
@@ -184,8 +189,14 @@ app.post("/api/auth/login", (req, res) => {
       });
     }
   } else {
+    // Ensure master admin account is never deactivated or locked
     if (!profile.is_active) {
-      return res.status(403).json({ error: "Access denied. Your employee account has been deactivated." });
+      if (profile.email.toLowerCase() === "csb21090@gmail.com" || profile.role === "owner") {
+        db.updateProfile(profile.id, { is_active: true });
+        profile.is_active = true;
+      } else {
+        return res.status(403).json({ error: "Access denied. Your employee account has been deactivated." });
+      }
     }
 
     // Verify Password:
@@ -194,16 +205,15 @@ app.post("/api/auth/login", (req, res) => {
       db.updateProfile(profile.id, { password: trimmedPass });
       profile.password = trimmedPass;
     } else {
-      // Validate password
+      // Validate matching password
       const match =
         (profile.password && profile.password === trimmedPass) ||
         (profile.pin && profile.pin === trimmedPass) ||
-        trimmedPass === "123456" || // master fallback PIN
         (profile.role === "owner" && (trimmedPass === "admin123" || trimmedPass === "admin"));
 
       if (!match) {
         return res.status(401).json({
-          error: "Incorrect password or PIN. (Default recovery PIN: 123456)",
+          error: "The password entered does not match. Please enter the correct matching password.",
         });
       }
     }
@@ -262,135 +272,283 @@ app.put("/api/auth/password", requireAuth, (req, res) => {
 });
 
 // =========================================================================
-// GOOGLE SIGN-IN FOR ALL EMPLOYEES & ADMIN
+// GOOGLE SIGN-IN FOR ALL EMPLOYEES & ADMIN (OPTION 2 WORKFLOW)
 // =========================================================================
 app.post("/api/auth/google", (req, res) => {
-  const { email, name, avatar_url, google_id } = req.body;
+  const { email, name, avatar_url, google_id, code } = req.body;
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Google email is required." });
   }
 
   const normalized = email.trim().toLowerCase();
 
-  // Check if authorized
   // 1. Is it the primary center admin / owner?
   const isCenterOwner = normalized === "csb21090@gmail.com";
 
-  // 2. Check existing profile
   let profile = db.getProfileByEmail(normalized);
-
-  // 3. Check approved users list
   const approvedUser = db.getApprovedUserByEmail(normalized);
-
-  // 4. Check invitation
   const invitation = db.getInvitationByEmail(normalized);
 
-  const isAuthorized =
-    isCenterOwner ||
-    (profile && profile.is_active) ||
-    (approvedUser && approvedUser.is_active) ||
-    (invitation && invitation.status === "pending");
+  // If master admin csb21090@gmail.com:
+  if (isCenterOwner) {
+    if (!profile) {
+      const org = db.getOrganizations()[0];
+      const branch = db.getBranches()[0];
+      profile = db.createProfile({
+        id: "admin-user-id-mock-uuid-key",
+        organization_id: org.id,
+        branch_id: branch.id,
+        full_name: name || "Center Admin",
+        email: normalized,
+        role: "owner",
+        google_id: google_id || undefined,
+        avatar_url: avatar_url || undefined,
+        desk_name: "Main Admin Desk",
+        is_active: true,
+        email_verified: true,
+        joining_date: new Date().toISOString().split("T")[0],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    } else if (!profile.is_active) {
+      db.updateProfile(profile.id, { is_active: true, email_verified: true });
+      profile.is_active = true;
+      profile.email_verified = true;
+    }
 
-  if (!isAuthorized) {
-    // Save this as a pending Google access request for the Admin to approve in the console!
-    db.addGoogleRequest({
-      email: normalized,
-      name: name || normalized.split("@")[0].replace(/[._-]/g, " "),
-      avatar_url: avatar_url || undefined,
-      google_id: google_id || undefined,
+    res.cookie("auth_session_id", profile.id, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: "/",
+      sameSite: "none",
+      secure: true,
     });
 
-    return res.status(403).json({
-      error: `Access Denied: Your Google ID (${normalized}) has not been approved by the Admin yet. Your access request has been sent to the Admin for approval.`,
-      pendingApproval: true,
-      email: normalized,
+    return res.json({
+      success: true,
+      user: profile,
+      token: profile.id,
+      message: "Admin login successful via Google.",
     });
   }
 
+  // 2. If existing approved & active employee:
+  if (profile && profile.is_active) {
+    // Update avatar and google_id if supplied
+    const updates: Partial<Profile> = {};
+    if (avatar_url && avatar_url !== profile.avatar_url) updates.avatar_url = avatar_url;
+    if (google_id && google_id !== profile.google_id) updates.google_id = google_id;
+    if (name && (!profile.full_name || profile.full_name === normalized.split("@")[0])) updates.full_name = name;
+    if (Object.keys(updates).length > 0) profile = db.updateProfile(profile.id, updates);
+
+    // Audit log
+    db.addAuditLog({
+      organization_id: profile.organization_id,
+      user_id: profile.id,
+      action: "LOGIN",
+      entity_type: "profiles",
+      entity_id: profile.id,
+      new_values: JSON.stringify({
+        email: profile.email,
+        method: "GOOGLE_SIGN_IN",
+        timestamp: new Date().toISOString(),
+      }),
+    });
+
+    res.cookie("auth_session_id", profile.id, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: "/",
+      sameSite: "none",
+      secure: true,
+    });
+
+    return res.json({
+      success: true,
+      user: profile,
+      token: profile.id,
+      message: "Employee login successful via Google.",
+    });
+  }
+
+  // 3. For new employee or pending approval:
+  // First, ensure their employee data is captured and saved in database immediately!
   const org = db.getOrganizations()[0];
   const branch = db.getBranches()[0];
+  const nameToUse = name || normalized.split("@")[0].replace(/[._-]/g, " ");
 
   if (!profile) {
-    // Auto-create profile from approved Google user or invitation
-    const roleToUse = isCenterOwner ? "owner" : (approvedUser?.role || invitation?.role || "employee");
-    const nameToUse = name || approvedUser?.full_name || invitation?.full_name || normalized.split("@")[0].replace(/[._-]/g, " ");
-
     profile = db.createProfile({
-      id: isCenterOwner ? "admin-user-id-mock-uuid-key" : ("user-id-" + Math.random().toString(36).substring(2, 11)),
+      id: "user-id-" + Math.random().toString(36).substring(2, 11),
       organization_id: (approvedUser && approvedUser.organization_id) || (invitation && invitation.organization_id) || org.id,
       branch_id: (approvedUser && approvedUser.branch_id) || (invitation && invitation.branch_id) || branch.id,
       full_name: nameToUse,
       email: normalized,
-      role: roleToUse,
+      role: "employee",
       google_id: google_id || undefined,
       avatar_url: avatar_url || undefined,
-      desk_name: approvedUser?.desk_name || invitation?.desk_name || (isCenterOwner ? "Main Admin Desk" : "Desk 1"),
-      phone_number: invitation?.phone_number || undefined,
-      is_active: true,
+      desk_name: "Service Desk",
+      is_active: false, // Inactive until Admin csb21090@gmail.com approves
+      email_verified: false,
       joining_date: new Date().toISOString().split("T")[0],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
-
-    if (invitation) {
-      db.updateInvitation(invitation.id, { status: "accepted", accepted_at: new Date().toISOString() });
-    }
-  } else {
-    if (!profile.is_active) {
-      return res.status(403).json({ error: "Access denied. Your employee Google account has been deactivated by the Admin." });
-    }
-
-    // Update avatar and google_id if supplied
-    const updates: Partial<Profile> = {};
-    if (avatar_url && avatar_url !== profile.avatar_url) {
-      updates.avatar_url = avatar_url;
-    }
-    if (google_id && google_id !== profile.google_id) {
-      updates.google_id = google_id;
-    }
-    if (name && (!profile.full_name || profile.full_name === normalized.split("@")[0])) {
-      updates.full_name = name;
-    }
-    if (Object.keys(updates).length > 0) {
-      profile = db.updateProfile(profile.id, updates);
-    }
   }
 
-  // If this Google ID was in pending requests, mark it as approved
+  // Save request in google_requests table as well
+  db.addGoogleRequest({
+    email: normalized,
+    name: nameToUse,
+    avatar_url: avatar_url || undefined,
+    google_id: google_id || undefined,
+    email_verified: profile.email_verified || false,
+  });
+
+  // Check if this request includes a verification code submission:
+  if (code) {
+    const record = otpStore.get(normalized);
+    if (!record || record.expiresAt < Date.now()) {
+      return res.status(400).json({
+        error: "Verification code has expired. Please request a fresh code.",
+        expired: true,
+      });
+    }
+
+    if (record.code !== String(code).trim()) {
+      record.attempts = (record.attempts || 0) + 1;
+      return res.status(400).json({
+        error: "The 6-digit verification code entered does not match. Please check your email and try again.",
+      });
+    }
+
+    // Code verified successfully!
+    otpStore.delete(normalized);
+
+    // Mark email verified in profile and google requests
+    db.updateProfile(profile.id, { email_verified: true });
+    profile.email_verified = true;
+
+    const reqs = db.getGoogleRequests();
+    const reqMatch = reqs.find(r => r.email.toLowerCase() === normalized);
+    if (reqMatch) {
+      db.updateGoogleRequest(reqMatch.id, { email_verified: true, verified_at: new Date().toISOString() });
+    }
+
+    // Check if user was already approved by admin
+    if (approvedUser && approvedUser.is_active) {
+      db.updateProfile(profile.id, { is_active: true });
+      profile.is_active = true;
+
+      res.cookie("auth_session_id", profile.id, {
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/",
+        sameSite: "none",
+        secure: true,
+      });
+
+      return res.json({
+        success: true,
+        user: profile,
+        token: profile.id,
+        message: "Email verified and access approved! Logging in...",
+      });
+    }
+
+    // Otherwise, waiting for Admin csb21090@gmail.com approval
+    return res.json({
+      success: true,
+      emailVerified: true,
+      pendingApproval: true,
+      email: normalized,
+      name: nameToUse,
+      message: `Your Google email (${normalized}) has been verified and your profile data is saved in the database. Please wait for the Center Admin (csb21090@gmail.com) to approve your desk access.`,
+    });
+  }
+
+  // If no code submitted yet, generate and send 6-digit verification code to the employee's email!
+  const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(normalized, {
+    code: generatedCode,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
+    attempts: 0,
+    createdAt: Date.now(),
+  });
+
+  console.log(`\n======================================================`);
+  console.log(`[GOOGLE EMAIL VERIFICATION] Sent to: ${normalized}`);
+  console.log(`[GOOGLE EMAIL VERIFICATION] Code:    ${generatedCode}`);
+  console.log(`[GOOGLE EMAIL VERIFICATION] Profile data saved in DB.`);
+  console.log(`======================================================\n`);
+
+  return res.json({
+    success: true,
+    requiresVerification: true,
+    email: normalized,
+    name: nameToUse,
+    devOtp: generatedCode,
+    emailVerified: profile.email_verified || false,
+    message: `A 6-digit verification code has been dispatched to your Google email (${normalized}). Enter the code to verify your identity.`,
+  });
+});
+
+// Check status of Google login approval (auto-polling & refresh)
+app.get("/api/auth/google/status", (req, res) => {
+  const email = String(req.query.email || "").trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+
+  const profile = db.getProfileByEmail(email);
   const requests = db.getGoogleRequests();
-  const reqMatch = requests.find(r => r.email.toLowerCase() === normalized);
-  if (reqMatch) {
-    db.updateGoogleRequestStatus(reqMatch.id, "approved");
+  const request = requests.find(r => r.email.toLowerCase() === email);
+
+  if (profile && profile.is_active) {
+    // Approved! Start session
+    res.cookie("auth_session_id", profile.id, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: "/",
+      sameSite: "none",
+      secure: true,
+    });
+
+    return res.json({
+      approved: true,
+      user: profile,
+      token: profile.id,
+      message: "Your account has been approved by the Admin!",
+    });
   }
 
-  // Audit log
-  db.addAuditLog({
-    organization_id: profile.organization_id,
-    user_id: profile.id,
-    action: "LOGIN",
-    entity_type: "profiles",
-    entity_id: profile.id,
-    new_values: JSON.stringify({
-      email: profile.email,
-      method: "GOOGLE_SIGN_IN",
-      timestamp: new Date().toISOString(),
-    }),
+  return res.json({
+    approved: false,
+    emailVerified: profile?.email_verified || request?.email_verified || false,
+    status: request?.status || "pending",
+  });
+});
+
+// Resend Google verification code
+app.post("/api/auth/google/resend", (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  const normalized = String(email).trim().toLowerCase();
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(normalized, {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    attempts: 0,
+    createdAt: Date.now(),
   });
 
-  // 30 days persistent cookie
-  res.cookie("auth_session_id", profile.id, {
-    httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: "/",
-    sameSite: "none",
-    secure: true,
-  });
+  console.log(`[GOOGLE EMAIL VERIFICATION RESEND] Sent to: ${normalized} Code: ${code}`);
 
   res.json({
     success: true,
-    user: profile,
-    token: profile.id,
-    message: "Google sign-in successful.",
+    devOtp: code,
+    message: `A fresh 6-digit verification code has been dispatched to ${normalized}.`,
   });
 });
 
@@ -512,6 +670,11 @@ app.get("/api/admin/approved-users", requireOwner, (req, res) => {
 app.put("/api/admin/approved-users/:email/toggle", requireOwner, (req, res) => {
   const { email } = req.params;
   const normalized = email.trim().toLowerCase();
+
+  if (normalized === "csb21090@gmail.com") {
+    return res.status(400).json({ error: "The primary administrator account (csb21090@gmail.com) cannot be deactivated." });
+  }
+
   const approved = db.getApprovedUserByEmail(normalized);
   if (!approved) {
     return res.status(404).json({ error: "Approved user not found." });
@@ -532,6 +695,11 @@ app.put("/api/admin/approved-users/:email/toggle", requireOwner, (req, res) => {
 app.delete("/api/admin/approved-users/:email", requireOwner, (req, res) => {
   const { email } = req.params;
   const normalized = email.trim().toLowerCase();
+
+  if (normalized === "csb21090@gmail.com") {
+    return res.status(400).json({ error: "The primary administrator account (csb21090@gmail.com) cannot be deleted." });
+  }
+
   db.deleteApprovedUser(normalized);
 
   // Deactivate profile

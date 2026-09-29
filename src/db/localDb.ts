@@ -405,7 +405,7 @@ export const db = {
     return database.google_requests;
   },
 
-  addGoogleRequest: (req: { email: string; name: string; avatar_url?: string; google_id?: string }): GoogleAccessRequest => {
+  addGoogleRequest: (req: { email: string; name: string; avatar_url?: string; google_id?: string; email_verified?: boolean; verified_at?: string }): GoogleAccessRequest => {
     const database = readDb();
     if (!database.google_requests) database.google_requests = [];
     
@@ -415,6 +415,8 @@ export const db = {
       existing.name = req.name || existing.name;
       existing.avatar_url = req.avatar_url || existing.avatar_url;
       existing.google_id = req.google_id || existing.google_id;
+      if (req.email_verified !== undefined) existing.email_verified = req.email_verified;
+      if (req.verified_at !== undefined) existing.verified_at = req.verified_at;
       existing.requested_at = new Date().toISOString();
       existing.status = "pending";
       writeDb(database);
@@ -429,10 +431,24 @@ export const db = {
       google_id: req.google_id,
       requested_at: new Date().toISOString(),
       status: "pending",
+      email_verified: req.email_verified || false,
+      verified_at: req.verified_at,
     };
     database.google_requests.push(newReq);
     writeDb(database);
     return newReq;
+  },
+
+  updateGoogleRequest: (id: string, updates: Partial<GoogleAccessRequest>): GoogleAccessRequest | null => {
+    const database = readDb();
+    if (!database.google_requests) database.google_requests = [];
+    const index = database.google_requests.findIndex(r => r.id === id);
+    if (index !== -1) {
+      database.google_requests[index] = { ...database.google_requests[index], ...updates };
+      writeDb(database);
+      return database.google_requests[index];
+    }
+    return null;
   },
 
   updateGoogleRequestStatus: (id: string, status: "approved" | "rejected") => {

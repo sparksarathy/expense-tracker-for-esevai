@@ -1590,9 +1590,19 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                           </div>
                         </div>
 
-                        <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          Pending
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          {req.email_verified ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Email Verified</span>
+                            </span>
+                          ) : (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Pending Verification
+                            </span>
+                          )}
+                          <span className="text-[9px] text-slate-500 font-medium">Ready for Approval</span>
+                        </div>
                       </div>
 
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">

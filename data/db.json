@@ -35,13 +35,27 @@
       "is_active": true,
       "joining_date": "2024-10-01",
       "created_at": "2026-07-19T11:50:31.709Z",
-      "updated_at": "2026-09-29T07:04:54.722Z",
+      "updated_at": "2026-09-29T10:03:56.373Z",
       "desk_name": "Main Admin Desk",
       "phone_number": "+91 9876543210",
       "notes": "Primary Center Administrator & Owner",
-      "avatar_url": "https://ui-avatars.com/api/?name=Spark&background=1e3a8a&color=fff",
+      "avatar_url": "https://ui-avatars.com/api/?name=csb21090%40gmail.com&background=1e3a8a&color=fff",
       "avatar_updated_at": null,
-      "google_id": "g-y6iye1g5"
+      "google_id": "g-880uzanm"
+    },
+    {
+      "id": "user-id-334utn537",
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "full_name": "Tester Staff",
+      "email": "staff.tester@gmail.com",
+      "role": "employee",
+      "desk_name": "Desk 2",
+      "is_active": true,
+      "email_verified": true,
+      "joining_date": "2026-09-29",
+      "created_at": "2026-09-29T10:33:03.999Z",
+      "updated_at": "2026-09-29T10:33:31.787Z"
     }
   ],
   "approved_users": [
@@ -54,6 +68,18 @@
       "is_active": true,
       "created_at": "2026-07-19T11:50:31.709Z",
       "updated_at": "2026-09-28T17:07:02.799Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "branch_id": "77777777-7777-4777-a777-777777777777",
+      "email": "staff.tester@gmail.com",
+      "desk_name": "Desk 2",
+      "role": "employee",
+      "is_active": true,
+      "invited_by": "admin-user-id-mock-uuid-key",
+      "id": "72ed86c0-ccdf-4ed3-944b-d6a1d58d7366",
+      "created_at": "2026-09-29T10:33:31.786Z",
+      "updated_at": "2026-09-29T10:33:31.786Z"
     }
   ],
   "service_categories": [
@@ -361,6 +387,34 @@
       "entity_id": "admin-user-id-mock-uuid-key",
       "id": "5ebcabdf-c34e-4e66-be6c-1e765d55980d",
       "created_at": "2026-09-29T07:04:45.645Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGOUT",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "id": "667b227d-ca5b-4807-a24e-9c17f634c02c",
+      "created_at": "2026-09-29T10:03:47.164Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGIN",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "new_values": "{\"email\":\"csb21090@gmail.com\",\"method\":\"GOOGLE_SIGN_IN\",\"timestamp\":\"2026-09-29T10:03:56.373Z\"}",
+      "id": "1fc800d0-87e5-4f55-8a0e-a4de9e45f8d6",
+      "created_at": "2026-09-29T10:03:56.373Z"
+    },
+    {
+      "organization_id": "88888888-8888-4888-a888-888888888888",
+      "user_id": "admin-user-id-mock-uuid-key",
+      "action": "LOGOUT",
+      "entity_type": "profiles",
+      "entity_id": "admin-user-id-mock-uuid-key",
+      "id": "11d95777-e74e-4b8c-9d9a-3e05394b939d",
+      "created_at": "2026-09-29T10:04:08.621Z"
     }
   ],
   "app_settings": [
@@ -376,5 +430,24 @@
   ],
   "service_rate_history": [],
   "invitations": [],
-  "google_requests": []
+  "google_requests": [
+    {
+      "id": "req-d7d8965b-a0cf-48e7-bc2e-12b113a06f71",
+      "email": "spark@gmail.com",
+      "name": "spark",
+      "avatar_url": "https://ui-avatars.com/api/?name=spark%40gmail.com&background=1e3a8a&color=fff",
+      "google_id": "g-1sgkesq1",
+      "requested_at": "2026-09-29T10:06:12.268Z",
+      "status": "pending"
+    },
+    {
+      "id": "req-50b49fdd-bfd3-49dd-8bb8-68cce5614b7c",
+      "email": "staff.tester@gmail.com",
+      "name": "staff tester",
+      "requested_at": "2026-09-29T10:33:10.819Z",
+      "status": "approved",
+      "email_verified": true,
+      "verified_at": "2026-09-29T10:33:10.819Z"
+    }
+  ]
 }

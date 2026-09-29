@@ -41,6 +41,7 @@ export interface Profile {
   pin?: string;
   google_id?: string;
   is_active: boolean;
+  email_verified?: boolean;
   avatar_url?: string;
   avatar_updated_at?: string;
   desk_name?: string;
@@ -74,6 +75,8 @@ export interface GoogleAccessRequest {
   google_id?: string;
   requested_at: string;
   status: "pending" | "approved" | "rejected";
+  email_verified?: boolean;
+  verified_at?: string;
 }
 
 export interface ServiceCategory {
