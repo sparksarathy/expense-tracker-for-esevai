@@ -14,7 +14,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 // Body parser
-app.use(express.json());
+app.use(express.json({ limit: "25mb" }));
 
 // Helper: Custom inline cookie parser
 app.use((req, res, next) => {
@@ -2420,6 +2420,60 @@ app.put("/api/settings", requireOwner, (req, res) => {
 
   const updated = db.updateAppSettings(updates);
   res.json({ success: true, settings: updated });
+});
+
+// Import / Merge Backup JSON into persistent database without deleting previous data
+app.post("/api/backup/import", requireAuth, (req, res) => {
+  try {
+    const currentUser = (req as any).user as Profile;
+    const { incomes, expenses, services, report } = req.body || {};
+
+    // Combine top-level and nested report arrays, deduplicating by id
+    const incomeMap = new Map<string, any>();
+    if (Array.isArray(report?.incomes)) {
+      report.incomes.forEach((item: any) => {
+        if (item && item.id) incomeMap.set(item.id, item);
+      });
+    }
+    if (Array.isArray(incomes)) {
+      incomes.forEach((item: any) => {
+        if (item && item.id) incomeMap.set(item.id, item);
+        else if (item) incomeMap.set(`inc-${Math.random()}`, item);
+      });
+    }
+
+    const expenseMap = new Map<string, any>();
+    if (Array.isArray(report?.expenses)) {
+      report.expenses.forEach((item: any) => {
+        if (item && item.id) expenseMap.set(item.id, item);
+      });
+    }
+    if (Array.isArray(expenses)) {
+      expenses.forEach((item: any) => {
+        if (item && item.id) expenseMap.set(item.id, item);
+        else if (item) expenseMap.set(`exp-${Math.random()}`, item);
+      });
+    }
+
+    const merged = db.mergeBackupData({
+      incomes: Array.from(incomeMap.values()),
+      expenses: Array.from(expenseMap.values()),
+      services: Array.isArray(services) ? services : [],
+      defaultOrgId: currentUser.organization_id,
+      defaultBranchId: currentUser.branch_id || "77777777-7777-4777-a777-777777777777",
+      defaultUserId: currentUser.id,
+    });
+
+    res.json({
+      success: true,
+      ...merged,
+      incomes: db.getIncomeEntries(),
+      expenses: db.getExpenseEntries(),
+    });
+  } catch (err: any) {
+    console.error("Backup import error:", err);
+    res.status(500).json({ error: err?.message || "Failed to import backup JSON into database." });
+  }
 });
 
 app.post("/api/settings/reset-data", requireOwner, (req, res) => {

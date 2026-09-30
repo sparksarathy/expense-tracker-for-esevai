@@ -189,17 +189,44 @@ export function setLastSyncTime(): void {
 }
 
 /**
+ * Helper to merge arrays of records by id without losing existing entries
+ */
+function mergeRecordsById<T extends { id?: string }>(existing: T[], incoming: T[]): T[] {
+  const map = new Map<string, T>();
+  (existing || []).forEach((item) => {
+    if (item && item.id) map.set(item.id, item);
+  });
+  (incoming || []).forEach((item) => {
+    if (item && item.id) {
+      map.set(item.id, { ...(map.get(item.id) || {}), ...item });
+    }
+  });
+  return Array.from(map.values());
+}
+
+/**
  * Exports all local data into a JSON file for the employee / admin to save as an offline backup
  */
 export function exportLocalBackup(): void {
+  const cachedReport = getCachedReport();
+  const allIncomes = mergeRecordsById<IncomeEntry>(
+    getCachedIncomes(),
+    Array.isArray(cachedReport?.incomes) ? cachedReport.incomes : []
+  );
+  const allExpenses = mergeRecordsById<ExpenseEntry>(
+    getCachedExpenses(),
+    Array.isArray(cachedReport?.expenses) ? cachedReport.expenses : []
+  );
+
   const backup = {
     app: "e-Sevai Maiyam Manager",
     exported_at: new Date().toISOString(),
     user: getCachedUser(),
-    incomes: getCachedIncomes(),
-    expenses: getCachedExpenses(),
+    incomes: allIncomes,
+    expenses: allExpenses,
     services: getCachedServices(),
-    report: getCachedReport(),
+    settings: getCachedAppSettings(),
+    report: cachedReport,
   };
 
   const json = JSON.stringify(backup, null, 2);
@@ -216,36 +243,73 @@ export function exportLocalBackup(): void {
 }
 
 /**
- * Restores local cache from an imported JSON backup
+ * Restores local cache from an imported JSON backup (merging with existing records so previous data is never deleted)
+ * and returns parsed arrays for server persistence.
  */
-export function importLocalBackup(jsonString: string): { success: boolean; message: string; count?: number } {
+export function importLocalBackup(jsonString: string): {
+  success: boolean;
+  message: string;
+  count?: number;
+  payload?: { incomes: any[]; expenses: any[]; services: any[]; report?: any };
+} {
   try {
     const data = JSON.parse(jsonString);
     if (!data || typeof data !== "object") {
       return { success: false, message: "Invalid backup file format." };
     }
 
-    let restoredCount = 0;
-    if (Array.isArray(data.incomes)) {
-      setCachedIncomes(data.incomes);
-      restoredCount += data.incomes.length;
+    const incomingIncomes = mergeRecordsById<IncomeEntry>(
+      Array.isArray(data.incomes) ? data.incomes : Array.isArray(data.income_entries) ? data.income_entries : [],
+      Array.isArray(data.report?.incomes) ? data.report.incomes : []
+    );
+
+    const incomingExpenses = mergeRecordsById<ExpenseEntry>(
+      Array.isArray(data.expenses) ? data.expenses : Array.isArray(data.expense_entries) ? data.expense_entries : [],
+      Array.isArray(data.report?.expenses) ? data.report.expenses : []
+    );
+
+    const incomingServices = Array.isArray(data.services)
+      ? data.services
+      : Array.isArray(data.service_categories)
+      ? data.service_categories
+      : [];
+
+    const mergedIncomes = mergeRecordsById<IncomeEntry>(getCachedIncomes(), incomingIncomes);
+    const mergedExpenses = mergeRecordsById<ExpenseEntry>(getCachedExpenses(), incomingExpenses);
+
+    setCachedIncomes(mergedIncomes);
+    setCachedExpenses(mergedExpenses);
+
+    if (incomingServices.length > 0) {
+      const mergedServices = mergeRecordsById<ServiceCategory>(getCachedServices(), incomingServices);
+      setCachedServices(mergedServices);
     }
-    if (Array.isArray(data.expenses)) {
-      setCachedExpenses(data.expenses);
-      restoredCount += data.expenses.length;
+
+    if (data.settings) {
+      setCachedAppSettings(data.settings);
     }
-    if (Array.isArray(data.services)) {
-      setCachedServices(data.services);
-    }
+
     if (data.report) {
-      setCachedReport(data.report);
+      setCachedReport({
+        ...data.report,
+        incomes: mergedIncomes,
+        expenses: mergedExpenses,
+      });
     }
     setLastSyncTime();
 
+    const restoredCount = incomingIncomes.length + incomingExpenses.length;
+
     return {
       success: true,
-      message: `Successfully restored ${restoredCount} transaction records from backup!`,
+      message: `Successfully restored and merged ${incomingIncomes.length} income records and ${incomingExpenses.length} expense records from backup!`,
       count: restoredCount,
+      payload: {
+        incomes: mergedIncomes,
+        expenses: mergedExpenses,
+        services: incomingServices,
+        report: data.report,
+      },
     };
   } catch (err: any) {
     return { success: false, message: err?.message || "Failed to parse backup JSON." };

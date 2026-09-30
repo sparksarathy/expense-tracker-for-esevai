@@ -21,6 +21,7 @@ import {
   EmployeeInvitation,
   GoogleAccessRequest
 } from "../types";
+import { RESTORED_INCOME_ENTRIES, RESTORED_EXPENSE_ENTRIES } from "./initialBackupData";
 
 const DB_FILE_PATH = path.join(process.cwd(), "data", "db.json");
 
@@ -207,9 +208,9 @@ function getInitialData(): DatabaseSchema {
     updated_at: new Date().toISOString(),
   };
 
-  // Fresh clean production state: No mock or sample transactions
-  const incomeEntries: IncomeEntry[] = [];
-  const expenseEntries: ExpenseEntry[] = [];
+  // Seed with restored production backup entries
+  const incomeEntries: IncomeEntry[] = [...RESTORED_INCOME_ENTRIES];
+  const expenseEntries: ExpenseEntry[] = [...RESTORED_EXPENSE_ENTRIES];
 
   return {
     organizations: [org],
@@ -266,12 +267,26 @@ function readDb(): DatabaseSchema {
         needsSave = true;
       }
       if (!dbCache!.income_entries || !Array.isArray(dbCache!.income_entries)) {
-        dbCache!.income_entries = [];
+        dbCache!.income_entries = [...RESTORED_INCOME_ENTRIES];
         needsSave = true;
+      } else {
+        for (const inc of RESTORED_INCOME_ENTRIES) {
+          if (!dbCache!.income_entries.some((e) => e.id === inc.id)) {
+            dbCache!.income_entries.push(inc);
+            needsSave = true;
+          }
+        }
       }
       if (!dbCache!.expense_entries || !Array.isArray(dbCache!.expense_entries)) {
-        dbCache!.expense_entries = [];
+        dbCache!.expense_entries = [...RESTORED_EXPENSE_ENTRIES];
         needsSave = true;
+      } else {
+        for (const exp of RESTORED_EXPENSE_ENTRIES) {
+          if (!dbCache!.expense_entries.some((e) => e.id === exp.id)) {
+            dbCache!.expense_entries.push(exp);
+            needsSave = true;
+          }
+        }
       }
       if (!dbCache!.audit_logs || !Array.isArray(dbCache!.audit_logs)) {
         dbCache!.audit_logs = [];
@@ -942,6 +957,141 @@ export const db = {
     return {
       incomeCount: incomeBefore.length,
       expenseCount: expenseBefore.length
+    };
+  },
+
+  // Merge Backup Data without deleting existing records, preserving exact timestamps and IDs
+  mergeBackupData: (payload: {
+    incomes?: any[];
+    expenses?: any[];
+    services?: any[];
+    defaultOrgId?: string;
+    defaultBranchId?: string;
+    defaultUserId?: string;
+  }): { addedIncomes: number; addedExpenses: number; totalIncomes: number; totalExpenses: number } => {
+    const database = readDb();
+    const orgId = payload.defaultOrgId || database.organizations[0]?.id || "88888888-8888-4888-a888-888888888888";
+    const branchId = payload.defaultBranchId || database.branches[0]?.id || "77777777-7777-4777-a777-777777777777";
+    const fallbackUserId = payload.defaultUserId || "admin-user-ssesevai-id";
+
+    let addedIncomes = 0;
+    let addedExpenses = 0;
+
+    if (Array.isArray(payload.incomes)) {
+      for (const rawInc of payload.incomes) {
+        if (!rawInc || typeof rawInc !== "object") continue;
+        const entryId = rawInc.id || generateUUID();
+        const existingIndex = database.income_entries.findIndex((e) => e.id === entryId);
+        const normalized: IncomeEntry = {
+          id: entryId,
+          organization_id: rawInc.organization_id || orgId,
+          branch_id: rawInc.branch_id || branchId,
+          employee_id: rawInc.employee_id || fallbackUserId,
+          customer_name: rawInc.customer_name || "Customer",
+          customer_number: rawInc.customer_number || "",
+          service_category_id: rawInc.service_category_id || rawInc.service_id || "Other Service",
+          service_id: rawInc.service_id || rawInc.service_category_id || "Other Service",
+          service_name_snapshot: rawInc.service_name_snapshot || rawInc.service_category_id || "Other Service",
+          payment_method: rawInc.payment_method === "GPay" ? "GPay" : "Cash in Hand",
+          service_rate: Number(rawInc.service_rate ?? rawInc.charged_rate ?? 0),
+          listed_rate: Number(rawInc.listed_rate ?? rawInc.service_rate ?? 0),
+          charged_rate: Number(rawInc.charged_rate ?? rawInc.service_rate ?? 0),
+          rate_overridden: Boolean(rawInc.rate_overridden),
+          rate_override_reason: rawInc.rate_override_reason || "",
+          transaction_date: rawInc.transaction_date || (rawInc.created_at ? String(rawInc.created_at).split("T")[0] : new Date().toISOString().split("T")[0]),
+          notes: rawInc.notes || "",
+          created_by: rawInc.created_by || rawInc.employee_id || fallbackUserId,
+          created_at: rawInc.created_at || new Date().toISOString(),
+          updated_at: rawInc.updated_at || rawInc.created_at || new Date().toISOString(),
+          deleted_at: rawInc.deleted_at ?? null,
+        };
+
+        if (existingIndex === -1) {
+          database.income_entries.push(normalized);
+          addedIncomes++;
+        } else {
+          // If it was soft-deleted or older, restore/keep exact record from backup
+          database.income_entries[existingIndex] = {
+            ...database.income_entries[existingIndex],
+            ...normalized,
+            deleted_at: null,
+          };
+        }
+      }
+    }
+
+    if (Array.isArray(payload.expenses)) {
+      for (const rawExp of payload.expenses) {
+        if (!rawExp || typeof rawExp !== "object") continue;
+        const entryId = rawExp.id || generateUUID();
+        const existingIndex = database.expense_entries.findIndex((e) => e.id === entryId);
+        const normalized: ExpenseEntry = {
+          id: entryId,
+          organization_id: rawExp.organization_id || orgId,
+          branch_id: rawExp.branch_id || branchId,
+          employee_id: rawExp.employee_id || fallbackUserId,
+          expense_category_id: rawExp.expense_category_id || "expense-cat-10",
+          description: rawExp.description || "Expense",
+          amount: Number(rawExp.amount ?? 0),
+          payment_method: rawExp.payment_method === "GPay" ? "GPay" : "Cash in Hand",
+          transaction_date: rawExp.transaction_date || (rawExp.created_at ? String(rawExp.created_at).split("T")[0] : new Date().toISOString().split("T")[0]),
+          receipt_url: rawExp.receipt_url || "",
+          notes: rawExp.notes || "",
+          created_by: rawExp.created_by || rawExp.employee_id || fallbackUserId,
+          created_at: rawExp.created_at || new Date().toISOString(),
+          updated_at: rawExp.updated_at || rawExp.created_at || new Date().toISOString(),
+          deleted_at: rawExp.deleted_at ?? null,
+        };
+
+        if (existingIndex === -1) {
+          database.expense_entries.push(normalized);
+          addedExpenses++;
+        } else {
+          database.expense_entries[existingIndex] = {
+            ...database.expense_entries[existingIndex],
+            ...normalized,
+            deleted_at: null,
+          };
+        }
+      }
+    }
+
+    if (Array.isArray(payload.services)) {
+      for (const rawSvc of payload.services) {
+        if (!rawSvc || typeof rawSvc !== "object") continue;
+        const svcId = rawSvc.id;
+        const svcName = rawSvc.category_name || rawSvc.service_name;
+        if (!svcName) continue;
+        const exists = database.service_categories.some(
+          (c) => (svcId && c.id === svcId) || c.category_name.toLowerCase() === String(svcName).toLowerCase()
+        );
+        if (!exists) {
+          database.service_categories.push({
+            id: svcId || generateUUID(),
+            organization_id: rawSvc.organization_id || orgId,
+            category_name: svcName,
+            service_name: rawSvc.service_name || svcName,
+            description: rawSvc.description || `Government service for ${svcName}`,
+            default_rate: Number(rawSvc.default_rate ?? 100),
+            is_active: rawSvc.is_active !== false,
+            display_order: rawSvc.display_order || database.service_categories.length + 1,
+            created_at: rawSvc.created_at || new Date().toISOString(),
+            updated_at: rawSvc.updated_at || new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    writeDb(database);
+
+    const activeIncomes = database.income_entries.filter((e) => !e.deleted_at).length;
+    const activeExpenses = database.expense_entries.filter((e) => !e.deleted_at).length;
+
+    return {
+      addedIncomes,
+      addedExpenses,
+      totalIncomes: activeIncomes,
+      totalExpenses: activeExpenses,
     };
   }
 };
