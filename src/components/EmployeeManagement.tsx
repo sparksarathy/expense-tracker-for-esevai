@@ -81,6 +81,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
   const [editNotes, setEditNotes] = useState("");
   const [editBranchId, setEditBranchId] = useState("");
   const [editJoiningDate, setEditJoiningDate] = useState("");
+  const [editAllowRateEdit, setEditAllowRateEdit] = useState<boolean>(true);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -599,6 +600,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     setEditNotes(emp.notes || "");
     setEditBranchId(emp.branch_id || "");
     setEditJoiningDate(emp.joining_date || "");
+    setEditAllowRateEdit(emp.allow_rate_edit !== false);
     setEditError(null);
     setActiveDropdownId(null);
   };
@@ -614,7 +616,7 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
     setEditError(null);
 
     try {
-      const res = await fetch(`/api/employees/${editingEmployee.id}`, {
+      const res = await authFetch(`/api/employees/${editingEmployee.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -627,8 +629,9 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
           phone_number: editPhoneNumber ? editPhoneNumber.trim() : null,
           notes: editNotes ? editNotes.trim() : null,
           branch_id: editBranchId || null,
-          joining_date: editJoiningDate || null
-        }),
+          joining_date: editJoiningDate || null,
+          allow_rate_edit: editAllowRateEdit
+        })
       });
 
       const data = await res.json();
@@ -2348,6 +2351,26 @@ export default function EmployeeManagement({ user, onRefresh }: EmployeeManageme
                   />
                 </div>
               </div>
+
+              {/* Rate Edit Permission in Income Entry Form */}
+              {user.role === "owner" && editRole === "employee" && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+                  <div>
+                    <span className="font-bold text-slate-800 text-xs block">
+                      Allow Rate Edit in Income Entry Form
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Permit this employee to edit the service rate in the Income Entry Form like Admin
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editAllowRateEdit}
+                    onChange={(e) => setEditAllowRateEdit(e.target.checked)}
+                    className="w-4 h-4 accent-purple-700 rounded cursor-pointer"
+                  />
+                </div>
+              )}
 
               {/* Work Specialization Description */}
               <div className="space-y-1">

@@ -41,6 +41,7 @@ export interface Profile {
   pin?: string;
   google_id?: string;
   is_active: boolean;
+  allow_rate_edit?: boolean; // Per-employee permission to edit service rate in Income Entry Form
   email_verified?: boolean;
   avatar_url?: string;
   avatar_updated_at?: string;
@@ -62,6 +63,7 @@ export interface ApprovedUser {
   google_id?: string;
   role: UserRole;
   is_active: boolean;
+  allow_rate_edit?: boolean;
   invited_by?: string;
   created_at: string;
   updated_at: string;
@@ -202,6 +204,7 @@ export interface AppSettings {
   employee_editing_limit_hours: number;
   require_expense_receipt: boolean;
   allow_employee_rate_override?: boolean;
+  employee_rate_permissions?: Record<string, boolean>;
   created_at: string;
   updated_at: string;
 }

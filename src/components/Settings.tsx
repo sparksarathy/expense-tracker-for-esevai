@@ -7,8 +7,9 @@ import React, { useState, useEffect } from "react";
 import { Profile, AppSettings } from "../types";
 import { 
   ShieldCheck, ToggleLeft, ToggleRight, Clock, Receipt, 
-  Save, RefreshCw, XCircle, Trash2, AlertTriangle, Info, CheckCircle2 
+  Save, RefreshCw, XCircle, Trash2, AlertTriangle, Info, CheckCircle2, Users 
 } from "lucide-react";
+import { authFetch, getCachedAppSettings, setCachedAppSettings } from "../lib/offlineStorage";
 
 interface SettingsProps {
   user: Profile;
@@ -18,13 +19,30 @@ export default function Settings({ user }: SettingsProps) {
   const isOwner = user.role === "owner";
 
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(() => getCachedAppSettings());
+  const [employees, setEmployees] = useState<Profile[]>([]);
   
   // App policy states
-  const [allowEditing, setAllowEditing] = useState(true);
-  const [limitHours, setLimitHours] = useState<string>("24");
-  const [requireReceipt, setRequireReceipt] = useState(false);
-  const [allowEmployeeOverride, setAllowEmployeeOverride] = useState(false);
+  const [allowEditing, setAllowEditing] = useState<boolean>(() => {
+    const c = getCachedAppSettings();
+    return c ? Boolean(c.allow_employee_editing) : true;
+  });
+  const [limitHours, setLimitHours] = useState<string>(() => {
+    const c = getCachedAppSettings();
+    return c?.employee_editing_limit_hours !== undefined ? String(c.employee_editing_limit_hours) : "24";
+  });
+  const [requireReceipt, setRequireReceipt] = useState<boolean>(() => {
+    const c = getCachedAppSettings();
+    return c ? Boolean(c.require_expense_receipt) : false;
+  });
+  const [allowEmployeeOverride, setAllowEmployeeOverride] = useState<boolean>(() => {
+    const c = getCachedAppSettings();
+    return c?.allow_employee_rate_override !== undefined ? Boolean(c.allow_employee_rate_override) : true;
+  });
+  const [employeeRatePermissions, setEmployeeRatePermissions] = useState<Record<string, boolean>>(() => {
+    const c = getCachedAppSettings();
+    return c?.employee_rate_permissions || {};
+  });
 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -38,16 +56,44 @@ export default function Settings({ user }: SettingsProps) {
   const [dangerError, setDangerError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchSettingsAndEmployees = async () => {
       try {
-        const res = await fetch("/api/settings");
+        const [res, empRes] = await Promise.all([
+          authFetch("/api/settings"),
+          authFetch("/api/employees"),
+        ]);
+        let loadedPerms: Record<string, boolean> = {};
         if (res.ok) {
           const data = await res.json();
-          setSettings(data.settings);
-          setAllowEditing(data.settings.allow_employee_editing);
-          setLimitHours(data.settings.employee_editing_limit_hours.toString());
-          setRequireReceipt(data.settings.require_expense_receipt);
-          setAllowEmployeeOverride(!!data.settings.allow_employee_rate_override);
+          if (data.settings) {
+            setSettings(data.settings);
+            setCachedAppSettings(data.settings);
+            setAllowEditing(Boolean(data.settings.allow_employee_editing));
+            setLimitHours(String(data.settings.employee_editing_limit_hours ?? 24));
+            setRequireReceipt(Boolean(data.settings.require_expense_receipt));
+            setAllowEmployeeOverride(
+              data.settings.allow_employee_rate_override !== undefined
+                ? Boolean(data.settings.allow_employee_rate_override)
+                : true
+            );
+            loadedPerms = data.settings.employee_rate_permissions || {};
+          }
+        }
+        if (empRes.ok) {
+          const empData = await empRes.json();
+          const staffList = (empData.employees || []).filter(
+            (e: Profile) => e.email.toLowerCase() !== "csb21090@gmail.com" && e.role !== "owner"
+          );
+          setEmployees(staffList);
+          const mergedPerms: Record<string, boolean> = { ...loadedPerms };
+          staffList.forEach((emp: Profile) => {
+            if (mergedPerms[emp.id] === undefined) {
+              mergedPerms[emp.id] = emp.allow_rate_edit !== false;
+            }
+          });
+          setEmployeeRatePermissions(mergedPerms);
+        } else {
+          setEmployeeRatePermissions(loadedPerms);
         }
       } catch (err) {
         console.error("Failed fetching settings:", err);
@@ -55,8 +101,15 @@ export default function Settings({ user }: SettingsProps) {
         setLoading(false);
       }
     };
-    fetchSettings();
+    fetchSettingsAndEmployees();
   }, []);
+
+  const handleToggleEmployeeRate = (empId: string) => {
+    setEmployeeRatePermissions((prev) => ({
+      ...prev,
+      [empId]: prev[empId] === false ? true : false,
+    }));
+  };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +125,7 @@ export default function Settings({ user }: SettingsProps) {
     }
 
     try {
-      const res = await fetch("/api/settings", {
+      const res = await authFetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -80,14 +133,19 @@ export default function Settings({ user }: SettingsProps) {
           employee_editing_limit_hours: hrs,
           require_expense_receipt: requireReceipt,
           allow_employee_rate_override: allowEmployeeOverride,
+          employee_rate_permissions: employeeRatePermissions,
         }),
       });
 
+      const data = await res.json();
       if (res.ok) {
+        if (data.settings) {
+          setSettings(data.settings);
+          setCachedAppSettings(data.settings);
+        }
         setSuccess(true);
-        setTimeout(() => setSuccess(false), 2000);
+        setTimeout(() => setSuccess(false), 3000);
       } else {
-        const data = await res.json();
         throw new Error(data.error || "Save settings failed");
       }
     } catch (err: any) {
@@ -249,30 +307,110 @@ export default function Settings({ user }: SettingsProps) {
           </div>
         )}
 
-        {/* Toggle 3: Allow Employee Rate Overrides */}
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4" id="toggle-override-group">
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-              <ShieldCheck className="w-4.5 h-4.5 text-slate-400" />
-              <span>Allow Employee Rate Overrides</span>
-            </h3>
-            <p className="text-slate-500 text-xs font-normal">
-              Authorize staff operators to modify catalog prices during customer intake. (Subject to catalog min/max limitations, override reasons logged).
-            </p>
+        {/* Toggle 3: Allow Employee Rate Editing in Income Entry Form */}
+        <div className="border-b border-slate-100 pb-4 space-y-3" id="toggle-override-group">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                <ShieldCheck className="w-4.5 h-4.5 text-slate-400" />
+                <span>Allow Employee Rate Editing (Income Entry Form Only)</span>
+              </h3>
+              <p className="text-slate-500 text-xs font-normal">
+                Allow staff operators to edit the Collected Charging Rate (₹) directly inside the Income Entry Form just like Admin.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAllowEmployeeOverride(!allowEmployeeOverride)}
+              disabled={saving || !isOwner}
+              className="p-1 disabled:opacity-40"
+            >
+              {allowEmployeeOverride ? (
+                <ToggleRight className="w-9 h-9 text-emerald-600 cursor-pointer" />
+              ) : (
+                <ToggleLeft className="w-9 h-9 text-slate-400 cursor-pointer" />
+              )}
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setAllowEmployeeOverride(!allowEmployeeOverride)}
-            disabled={saving || !isOwner}
-            className="p-1 disabled:opacity-40"
-          >
-            {allowEmployeeOverride ? (
-              <ToggleRight className="w-9 h-9 text-emerald-600 cursor-pointer" />
-            ) : (
-              <ToggleLeft className="w-9 h-9 text-slate-400 cursor-pointer" />
-            )}
-          </button>
+          {/* Per-Employee Rate Edit Controls */}
+          {allowEmployeeOverride && employees.length > 0 && (
+            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-blue-900" />
+                  <span className="font-bold text-slate-800 text-xs">
+                    Per-Employee Rate Edit Access (Income Entry Form)
+                  </span>
+                </div>
+                {isOwner && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next: Record<string, boolean> = {};
+                        employees.forEach((emp) => {
+                          next[emp.id] = true;
+                        });
+                        setEmployeeRatePermissions(next);
+                      }}
+                      className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      Enable All
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next: Record<string, boolean> = {};
+                        employees.forEach((emp) => {
+                          next[emp.id] = false;
+                        });
+                        setEmployeeRatePermissions(next);
+                      }}
+                      className="text-[10px] font-bold text-slate-500 hover:underline cursor-pointer"
+                    >
+                      Disable All
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="divide-y divide-slate-200/60">
+                {employees.map((emp) => {
+                  const canEdit = employeeRatePermissions[emp.id] !== false;
+                  return (
+                    <div key={emp.id} className="py-2 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="font-bold text-slate-800 text-xs block">{emp.full_name}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {emp.desk_name ? `${emp.desk_name} • ` : ""}{emp.email}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleEmployeeRate(emp.id)}
+                        disabled={saving || !isOwner}
+                        className="flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          canEdit ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
+                        }`}>
+                          {canEdit ? "Can Edit Rate" : "Rate Locked"}
+                        </span>
+                        {canEdit ? (
+                          <ToggleRight className="w-7 h-7 text-emerald-600" />
+                        ) : (
+                          <ToggleLeft className="w-7 h-7 text-slate-400" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Toggle 4: Mandate Expense Receipt */}

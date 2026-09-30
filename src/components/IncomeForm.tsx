@@ -14,6 +14,8 @@ import {
   appendCachedIncome, 
   getCachedServices, 
   setCachedServices,
+  getCachedAppSettings,
+  setCachedAppSettings,
   addToPendingQueue 
 } from "../lib/offlineStorage";
 
@@ -31,7 +33,16 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
     return cached.filter((c: any) => c.is_active);
   });
   const [employees, setEmployees] = useState<Profile[]>([]);
-  const [allowEmployeeRateOverride, setAllowEmployeeRateOverride] = useState(false);
+  const [allowEmployeeRateOverride, setAllowEmployeeRateOverride] = useState<boolean>(() => {
+    const cachedSettings = getCachedAppSettings();
+    return cachedSettings?.allow_employee_rate_override !== undefined
+      ? Boolean(cachedSettings.allow_employee_rate_override)
+      : true;
+  });
+  const [employeeRatePermissions, setEmployeeRatePermissions] = useState<Record<string, boolean>>(() => {
+    const cachedSettings = getCachedAppSettings();
+    return cachedSettings?.employee_rate_permissions || {};
+  });
   const [loading, setLoading] = useState(false);
   const [fetchingOptions, setFetchingOptions] = useState(true);
   
@@ -74,11 +85,19 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
         setCachedServices(active);
       }
 
-      // 2. Fetch system settings for override permissions
+      // 2. Fetch system settings for rate editing permissions
       const setRes = await authFetch("/api/settings");
       if (setRes.ok) {
         const setData = await setRes.json();
-        setAllowEmployeeRateOverride(!!setData.settings.allow_employee_rate_override);
+        if (setData.settings) {
+          setCachedAppSettings(setData.settings);
+          setAllowEmployeeRateOverride(
+            setData.settings.allow_employee_rate_override !== undefined
+              ? Boolean(setData.settings.allow_employee_rate_override)
+              : true
+          );
+          setEmployeeRatePermissions(setData.settings.employee_rate_permissions || {});
+        }
       }
 
       // 3. Fetch past customer names for datalist
@@ -220,7 +239,14 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
       ? `Amount exceeds the maximum permitted rate of ₹${maxPermitted}.`
       : "";
 
-  const isRateFieldDisabled = !isOwner && !allowEmployeeRateOverride;
+  // Check if this employee has permission to edit the rate in the Income Entry Form
+  const canEditRate =
+    isOwner ||
+    (allowEmployeeRateOverride &&
+      employeeRatePermissions[user.id] !== false &&
+      user.allow_rate_edit !== false);
+
+  const isRateFieldDisabled = !canEditRate;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,19 +263,9 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
       return;
     }
 
-    if (isOverridden && !isOwner) {
-      if (!allowEmployeeRateOverride) {
-        setErrorMsg("Employee rate override is disabled by organization settings.");
-        return;
-      }
-      if (rangeError) {
-        setErrorMsg(rangeError);
-        return;
-      }
-      if (!rateOverrideReason.trim()) {
-        setErrorMsg("A justification reason is required for rate overrides.");
-        return;
-      }
+    if (isOverridden && !canEditRate) {
+      setErrorMsg("Rate editing in the Income Entry Form is disabled for your account by the administrator.");
+      return;
     }
 
     setLoading(true);
@@ -499,27 +515,20 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
             <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl space-y-1.5">
               <div className="flex items-center gap-1.5 font-bold text-[11px]">
                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Rate Override Activated</span>
+                <span>Custom Rate Applied (Standard: ₹{activeListedRate})</span>
               </div>
               <p className="text-[10.5px] leading-relaxed">
-                You are changing the charged rate from the catalog standard of <span className="font-bold">₹{activeListedRate}</span>. An audit log trail will be recorded for this transaction.
+                This transaction will be recorded at <span className="font-bold">₹{activeRate}</span> instead of the standard rate of <span className="font-bold">₹{activeListedRate}</span>.
               </p>
-              
-              {rangeError && (
-                <p className="text-[10.5px] text-red-700 font-bold flex items-center gap-1">
-                  ⚠️ {rangeError}
-                </p>
-              )}
 
-              {/* Reason justifying input field */}
+              {/* Optional Reason field */}
               <div>
                 <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
-                  Reason / Justification for Override <span className="text-red-500">*</span>
+                  Reason / Note for Rate Change <span className="text-slate-400 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. Group bulk discount, physically disabled waiver..."
+                  placeholder="Optional note (e.g. Urgent service, discount, additional pages...)"
                   className="w-full px-3 py-1 bg-white border border-amber-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500"
                   value={rateOverrideReason}
                   onChange={(e) => setRateOverrideReason(e.target.value)}
@@ -611,7 +620,7 @@ export default function IncomeForm({ user, onSuccess, onNavigate }: IncomeFormPr
         <button
           id="income-submit-btn"
           type="submit"
-          disabled={loading || (isOverridden && !isOwner && !allowEmployeeRateOverride) || (isOverridden && rangeError !== "")}
+          disabled={loading || (isOverridden && !canEditRate)}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs shadow hover:shadow-md transition-all disabled:opacity-40"
         >
           {loading ? (

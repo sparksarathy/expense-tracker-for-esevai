@@ -201,6 +201,8 @@ function getInitialData(): DatabaseSchema {
     allow_employee_editing: true,
     employee_editing_limit_hours: 24,
     require_expense_receipt: false,
+    allow_employee_rate_override: true,
+    employee_rate_permissions: {},
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -237,44 +239,72 @@ function readDb(): DatabaseSchema {
     if (fs.existsSync(DB_FILE_PATH)) {
       const data = fs.readFileSync(DB_FILE_PATH, "utf-8");
       dbCache = JSON.parse(data);
+      let needsSave = false;
+
       if (!dbCache!.organizations || !Array.isArray(dbCache!.organizations)) {
         dbCache!.organizations = initial.organizations;
+        needsSave = true;
       }
       if (!dbCache!.branches || !Array.isArray(dbCache!.branches)) {
         dbCache!.branches = initial.branches;
+        needsSave = true;
       }
       if (!dbCache!.profiles || !Array.isArray(dbCache!.profiles)) {
         dbCache!.profiles = initial.profiles;
+        needsSave = true;
       }
       if (!dbCache!.approved_users || !Array.isArray(dbCache!.approved_users)) {
         dbCache!.approved_users = initial.approved_users;
+        needsSave = true;
       }
       if (!dbCache!.service_categories || !Array.isArray(dbCache!.service_categories)) {
         dbCache!.service_categories = initial.service_categories;
+        needsSave = true;
       }
       if (!dbCache!.expense_categories || !Array.isArray(dbCache!.expense_categories)) {
         dbCache!.expense_categories = initial.expense_categories;
+        needsSave = true;
       }
       if (!dbCache!.income_entries || !Array.isArray(dbCache!.income_entries)) {
         dbCache!.income_entries = [];
+        needsSave = true;
       }
       if (!dbCache!.expense_entries || !Array.isArray(dbCache!.expense_entries)) {
         dbCache!.expense_entries = [];
+        needsSave = true;
       }
       if (!dbCache!.audit_logs || !Array.isArray(dbCache!.audit_logs)) {
         dbCache!.audit_logs = [];
+        needsSave = true;
       }
-      if (!dbCache!.app_settings || !Array.isArray(dbCache!.app_settings)) {
+      if (!dbCache!.app_settings || !Array.isArray(dbCache!.app_settings) || dbCache!.app_settings.length === 0) {
         dbCache!.app_settings = initial.app_settings;
+        needsSave = true;
+      } else {
+        if (dbCache!.app_settings[0].allow_employee_rate_override === undefined) {
+          dbCache!.app_settings[0].allow_employee_rate_override = true;
+          needsSave = true;
+        }
+        if (!dbCache!.app_settings[0].employee_rate_permissions) {
+          dbCache!.app_settings[0].employee_rate_permissions = {};
+          needsSave = true;
+        }
       }
       if (!dbCache!.service_rate_history || !Array.isArray(dbCache!.service_rate_history)) {
         dbCache!.service_rate_history = [];
+        needsSave = true;
       }
       if (!dbCache!.invitations || !Array.isArray(dbCache!.invitations)) {
         dbCache!.invitations = [];
+        needsSave = true;
       }
       if (!dbCache!.google_requests || !Array.isArray(dbCache!.google_requests)) {
         dbCache!.google_requests = [];
+        needsSave = true;
+      }
+
+      if (needsSave) {
+        writeDb(dbCache!);
       }
       return dbCache!;
     }
@@ -797,9 +827,36 @@ export const db = {
   // Settings
   updateAppSettings: (updates: Partial<AppSettings>): AppSettings => {
     const database = readDb();
+    if (!database.app_settings || !database.app_settings[0]) {
+      database.app_settings = getInitialData().app_settings;
+    }
     const setting = database.app_settings[0];
-    const updated = { ...setting, ...updates, updated_at: new Date().toISOString() };
+    const mergedPermissions = {
+      ...(setting.employee_rate_permissions || {}),
+      ...(updates.employee_rate_permissions || {}),
+    };
+    const updated: AppSettings = {
+      ...setting,
+      ...updates,
+      employee_rate_permissions: mergedPermissions,
+      updated_at: new Date().toISOString(),
+    };
     database.app_settings[0] = updated;
+
+    // Also sync per-employee rate edit permission onto profiles and approved_users
+    if (updates.employee_rate_permissions) {
+      database.profiles = (database.profiles || []).map((p) => {
+        if (updates.employee_rate_permissions && p.id in updates.employee_rate_permissions) {
+          return {
+            ...p,
+            allow_rate_edit: Boolean(updates.employee_rate_permissions[p.id]),
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return p;
+      });
+    }
+
     writeDb(database);
     return updated;
   },

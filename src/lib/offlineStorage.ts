@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Profile, IncomeEntry, ExpenseEntry, ServiceCategory } from "../types";
+import { Profile, IncomeEntry, ExpenseEntry, ServiceCategory, AppSettings } from "../types";
 
 const STORAGE_KEYS = {
   USER: "esevai_auth_user",
@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   EXPENSES: "esevai_cached_expenses",
   SERVICES: "esevai_cached_services",
   REPORT: "esevai_cached_report",
+  SETTINGS: "esevai_cached_app_settings",
   PENDING_QUEUE: "esevai_pending_queue",
   LAST_SYNC: "esevai_last_sync_timestamp",
 };
@@ -128,6 +129,14 @@ export function getCachedReport(): any | null {
 
 export function setCachedReport(report: any): void {
   safeSet(STORAGE_KEYS.REPORT, report);
+}
+
+export function getCachedAppSettings(): AppSettings | null {
+  return safeGet<AppSettings | null>(STORAGE_KEYS.SETTINGS, null);
+}
+
+export function setCachedAppSettings(settings: AppSettings): void {
+  safeSet(STORAGE_KEYS.SETTINGS, settings);
 }
 
 // =========================================================================

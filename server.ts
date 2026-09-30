@@ -1401,22 +1401,16 @@ app.post("/api/income-entries", requireAuth, (req, res) => {
   if (rate_overridden) {
     if (user.role !== "owner") {
       const appSettings = db.getAppSettings();
-      if (!appSettings.allow_employee_rate_override) {
-        return res.status(403).json({ error: "Employee rate override is disabled by application settings." });
-      }
+      const globalAllowed = appSettings.allow_employee_rate_override !== false;
+      const perEmpMapAllowed = appSettings.employee_rate_permissions?.[user.id] !== false;
+      const profileAllowed = user.allow_rate_edit !== false;
 
-      // If minimum and maximum rates are configured, stay in range
-      if (service) {
-        if (service.minimum_rate !== undefined && service.minimum_rate !== null && rate < service.minimum_rate) {
-          return res.status(400).json({ error: `Rate is below the minimum permitted rate of ₹${service.minimum_rate}.` });
-        }
-        if (service.maximum_rate !== undefined && service.maximum_rate !== null && rate > service.maximum_rate) {
-          return res.status(400).json({ error: `Rate exceeds the maximum permitted rate of ₹${service.maximum_rate}.` });
-        }
+      if (!globalAllowed || !perEmpMapAllowed || !profileAllowed) {
+        return res.status(403).json({ error: "Rate editing in the Income Entry Form is disabled for your account by the administrator." });
       }
     }
 
-    // Add audit log for rate override difference
+    // Add audit log for rate adjustment difference
     db.addAuditLog({
       organization_id: user.organization_id,
       user_id: user.id,
@@ -1424,7 +1418,7 @@ app.post("/api/income-entries", requireAuth, (req, res) => {
       entity_type: "income_entries",
       entity_id: "new",
       old_values: `Listed: ₹${listed_rate}`,
-      new_values: `Charged: ₹${rate}. Reason: ${rate_override_reason || "None specified"}`
+      new_values: `Charged: ₹${rate}. ${rate_override_reason ? `Reason: ${rate_override_reason}` : "Edited in Income Entry Form"}`
     });
   }
 
@@ -2082,7 +2076,7 @@ app.get("/api/employees/:id/deletion-check", requireOwner, (req, res) => {
 // Toggle activation, set branch, or change details of employee
 app.put("/api/employees/:id", requireAuth, (req, res) => {
   const { id } = req.params;
-  const { is_active, full_name, desk_name, phone_number, notes, role, email, avatar_url, branch_id, new_id, joining_date } = req.body;
+  const { is_active, full_name, desk_name, phone_number, notes, role, email, avatar_url, branch_id, new_id, joining_date, allow_rate_edit } = req.body;
   const currentUser = (req as any).user;
 
   try {
@@ -2143,6 +2137,16 @@ app.put("/api/employees/:id", requireAuth, (req, res) => {
 
       if (branch_id !== undefined) {
         updates.branch_id = branch_id;
+      }
+
+      if (allow_rate_edit !== undefined) {
+        updates.allow_rate_edit = Boolean(allow_rate_edit);
+        const currentSettings = db.getAppSettings();
+        const nextPerms = {
+          ...(currentSettings.employee_rate_permissions || {}),
+          [updates.id || id]: Boolean(allow_rate_edit),
+        };
+        db.updateAppSettings({ employee_rate_permissions: nextPerms });
       }
 
       if (email !== undefined) {
@@ -2391,11 +2395,21 @@ app.get("/api/settings", requireAuth, (req, res) => {
 });
 
 app.put("/api/settings", requireOwner, (req, res) => {
-  const { allow_employee_editing, employee_editing_limit_hours, require_expense_receipt } = req.body;
+  const {
+    allow_employee_editing,
+    employee_editing_limit_hours,
+    require_expense_receipt,
+    allow_employee_rate_override,
+    employee_rate_permissions,
+  } = req.body;
 
   const updates: any = {};
   if (allow_employee_editing !== undefined) updates.allow_employee_editing = Boolean(allow_employee_editing);
   if (require_expense_receipt !== undefined) updates.require_expense_receipt = Boolean(require_expense_receipt);
+  if (allow_employee_rate_override !== undefined) updates.allow_employee_rate_override = Boolean(allow_employee_rate_override);
+  if (employee_rate_permissions !== undefined && typeof employee_rate_permissions === "object") {
+    updates.employee_rate_permissions = employee_rate_permissions;
+  }
   if (employee_editing_limit_hours !== undefined) {
     const hrs = Number(employee_editing_limit_hours);
     if (isNaN(hrs) || hrs < 0) {
